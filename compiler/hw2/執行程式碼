@@ -1,0 +1,7 @@
+cd "cwd"
+flex ps.l
+yacc -d ps.y
+gcc -c lex.yy.c -o lex.yy.o
+gcc -c y.tab.c -o y.tab.o
+gcc lex.yy.o y.tab.o -o yacc
+./yacc.exe < test.txt
