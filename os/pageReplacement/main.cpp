@@ -71,7 +71,7 @@ int main() {
     
 // Block1 : Random page replacement
     vector<int> randomString;
-    int str_len = 1200;
+    int str_len = 120000;
     randomString.resize(str_len);
     gen_random_string(randomString, str_len);
     cout << "Random String" << endl;
