@@ -50,24 +50,28 @@ void gen_local_string(vector<int> &xx, int string_length){
             xx.push_back(tool.rand_int(startLocality, endLocality));
     }
 }
+
 void show_data(T_Frame &frame, string show){
     cout << show << frame._pageSize << ", Page Fault: " << frame._pageFaults << endl;
 }
 
 int main() {
     vector<vector<T_Frame>> frames, framesLocal, framesMine;
-    frames.resize(3);
-    framesLocal.resize(3);
-    framesMine.resize(3);
+    frames.resize(4);
+    framesLocal.resize(4);
+    framesMine.resize(4);
     Init_frames(frames[0]);
     Init_frames(frames[1]);
     Init_frames(frames[2]);
+    Init_frames(frames[3]);
     Init_frames(framesLocal[0]);
     Init_frames(framesLocal[1]);
     Init_frames(framesLocal[2]);
+    Init_frames(framesLocal[3]);
     Init_frames(framesMine[0]);
     Init_frames(framesMine[1]);
     Init_frames(framesMine[2]);
+    Init_frames(framesMine[3]);
     
 // Block1 : Random page replacement
     vector<int> randomString;
@@ -79,40 +83,40 @@ int main() {
         fifoPageReplacement(randomString, frames[0][i]);
         optimalPageReplacement(randomString, frames[1][i]);
         enSecChancePageReplacement(randomString, frames[2][i]);
+        minePageReplacement(randomString, frames[3][i]);
     }
 
     // show data
     for (int i=0; i<10; i++)
-        show_data(frames[0][i], "FIFO    Random Frame size: ");
-    cout << endl;
+        show_data(frames[0][i], "FIFO    Random Frame size: "); cout << endl;
     for (int i=0; i<10; i++)
-        show_data(frames[1][i], "Optimal Random Frame size: ");
-    cout << endl;
+        show_data(frames[1][i], "Optimal Random Frame size: "); cout << endl;
     for (int i=0; i<10; i++)
-        show_data(frames[2][i], "Second  Random Frame size: ");
-    cout << endl << "---------------" << endl;
+        show_data(frames[2][i], "Second  Random Frame size: "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(frames[3][i], "Mine    Random Frame size: "); cout << endl << "---------------" << endl;
 
 // Block2 : Local page replacement
     vector<int> localString;
     gen_local_string(localString, str_len);
 
     for (int i=0; i< 10; i++) {
-        fifoPageReplacement(randomString, framesLocal[0][i]);
-        optimalPageReplacement(randomString, framesLocal[1][i]);
-        enSecChancePageReplacement(randomString, framesLocal[2][i]);
+        fifoPageReplacement(localString, framesLocal[0][i]);
+        optimalPageReplacement(localString, framesLocal[1][i]);
+        enSecChancePageReplacement(localString, framesLocal[2][i]);
+        minePageReplacement(localString, framesLocal[3][i]);
     }
 
     
     // show data
     for (int i=0; i<10; i++)
-        show_data(framesLocal[0][i], "FIFO    Local Frame size: ");
-    cout << endl;
+        show_data(framesLocal[0][i], "FIFO    Local Frame size: "); cout << endl;
     for (int i=0; i<10; i++)
-        show_data(framesLocal[1][i], "Optimal Local Frame size: ");
-    cout << endl;
+        show_data(framesLocal[1][i], "Optimal Local Frame size: "); cout << endl;
     for (int i=0; i<10; i++)
-        show_data(framesLocal[2][i], "Second  Local Frame size: ");
-    cout << endl << "---------------" << endl;
+        show_data(framesLocal[2][i], "Second  Local Frame size: "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(framesLocal[3][i], "Mine    Local Frame size: "); cout << endl << "---------------" << endl;
 
     return 0;
 }
