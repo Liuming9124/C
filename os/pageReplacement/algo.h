@@ -41,11 +41,15 @@ void Init_frame(T_Frame &frame, int pageSize){
     frame._interrupts = 0;
 }
 
-void Init_frames(vector<T_Frame> &frames)
+void Init_frames(vector<vector<T_Frame>> &frames)
 {
-    frames.resize(10);
-    for (int i = 0  ; i < 10; i++)
-        Init_frame(frames[i], (i+1)*10);
+    frames.resize(4);
+    for (int i = 0; i < 4; i++)
+    {
+        frames[i].resize(10);
+        for (int j = 0; j < 10; j++)
+            Init_frame(frames[i][j], (j + 1) * 10);
+    }
 }
 
 /*

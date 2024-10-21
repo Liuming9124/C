@@ -93,23 +93,55 @@ void show_data(T_Frame &frame, string show){
     cout << show << frame._pageSize << ",pf: " << frame._pageFaults << ",intpt: " << frame._interrupts << ",dw: " << frame._diskWrites << endl;
 }
 
+void show_datas(vector<vector<T_Frame>> &frames, vector<vector<T_Frame>> &framesLocal, vector<vector<T_Frame>> &framesMine){
+    
+    // show random data
+    for (int i=0; i<10; i++)
+        show_data(frames[0][i], "FIFO    : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(frames[1][i], "Optimal : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(frames[2][i], "Second  : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(frames[3][i], "Mine    : "); cout << endl << "---------------" << endl;
+
+
+    // show local data
+    for (int i=0; i<10; i++)
+        show_data(framesLocal[0][i], "FIFO    : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(framesLocal[1][i], "Optimal : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(framesLocal[2][i], "Second  : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(framesLocal[3][i], "Mine    : "); cout << endl << "---------------" << endl;
+
+
+    // show mine data
+    for (int i=0; i<10; i++)
+        show_data(framesMine[0][i], "FIFO    : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(framesMine[1][i], "Optimal : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(framesMine[2][i], "Second  : "); cout << endl;
+    for (int i=0; i<10; i++)
+        show_data(framesMine[3][i], "Mine    : "); cout << endl << "---------------" << endl;
+
+}
+
+void print_to_file(){
+    // print to file
+    
+}
+
 int main() {
     vector<vector<T_Frame>> frames, framesLocal, framesMine;
     frames.resize(4);
     framesLocal.resize(4);
     framesMine.resize(4);
-    Init_frames(frames[0]);
-    Init_frames(frames[1]);
-    Init_frames(frames[2]);
-    Init_frames(frames[3]);
-    Init_frames(framesLocal[0]);
-    Init_frames(framesLocal[1]);
-    Init_frames(framesLocal[2]);
-    Init_frames(framesLocal[3]);
-    Init_frames(framesMine[0]);
-    Init_frames(framesMine[1]);
-    Init_frames(framesMine[2]);
-    Init_frames(framesMine[3]);
+    Init_frames(frames);
+    Init_frames(framesLocal);
+    Init_frames(framesMine);
     
 // Block1 : Random page replacement
     vector<int> randomString;
@@ -151,40 +183,9 @@ int main() {
         cout << "Finish mine: " << i  << endl;
     }
 
+    show_datas(frames, framesLocal, framesMine);
 
-
-    // show random data
-    for (int i=0; i<10; i++)
-        show_data(frames[0][i], "FIFO    : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(frames[1][i], "Optimal : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(frames[2][i], "Second  : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(frames[3][i], "Mine    : "); cout << endl << "---------------" << endl;
-
-
-    // show local data
-    for (int i=0; i<10; i++)
-        show_data(framesLocal[0][i], "FIFO    : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(framesLocal[1][i], "Optimal : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(framesLocal[2][i], "Second  : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(framesLocal[3][i], "Mine    : "); cout << endl << "---------------" << endl;
-
-
-    // show mine data
-    for (int i=0; i<10; i++)
-        show_data(framesMine[0][i], "FIFO    : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(framesMine[1][i], "Optimal : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(framesMine[2][i], "Second  : "); cout << endl;
-    for (int i=0; i<10; i++)
-        show_data(framesMine[3][i], "Mine    : "); cout << endl << "---------------" << endl;
-
+    print_to_file();
 
     return 0;
 }
