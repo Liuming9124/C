@@ -49,16 +49,13 @@ void Init_frames(vector<T_Frame> &frames)
 }
 
 /*
-真實情境的模擬：
-這個函數可以模擬出在真實操作系統中隨機發生的中斷行為，例如：
-
 異常中斷：可能在某些特定的時候，例如每處理第 10 個頁面時，有一定機率會遇到異常情況，從而觸發中斷。
 隨機中斷行為：利用隨機數模擬一些不確定的情況，這些隨機中斷可能來自於硬體故障、計時器中斷、或者其它不可預測的事件。
 */
 
 void Interrupt(T_Frame &frame, int currentPageIndex)
 {
-    if ((currentPageIndex % 10 == 0) && (tool.rand_double(0, 1) < 0.5)){
+    if ((currentPageIndex % 10 == 0) && (tool.rand_double(0, 1) < 0.1)){
         frame._interrupts++;
         frame._interruptIndex.push_back(currentPageIndex);
     }
@@ -154,32 +151,44 @@ void optimalPageReplacement(vector<int>& referenceString, T_Frame& frame){
 void fifoPageReplacement(vector<int>& referenceString, T_Frame& frame) {
     int num_string = referenceString.size();
     int count = 0;
-    for (int i=0; i<num_string; i++){
+    
+    for (int i = 0; i < num_string; i++) {
+        // 將 queue 轉換成 vector 以便查找
+        vector<int> tempQData;
+        queue<int> tempQueue = frame._qdata;
+        while (!tempQueue.empty()) {
+            tempQData.push_back(tempQueue.front());
+            tempQueue.pop();
+        }
+
         // 如果當前頁面不在frame中，發生 Page Fault
-        if (find(frame._data.begin(), frame._data.end(), referenceString[i]) == frame._data.end()) {
+        if (find(tempQData.begin(), tempQData.end(), referenceString[i]) == tempQData.end()) {
             // Page Fault
             frame._pageFaults++;
+
             // 如果frame已經滿了，移除最早加入的頁面
             if (frame._dataSize == frame._pageSize) {
                 int page_to_remove = frame._qdata.front();
                 frame._qdata.pop();
+
                 // 模擬磁碟寫入
                 count++;
                 if (count % 10 == 0) {
                     frame._diskWrites++;
                     count = 0;
                 }
+            } else {
+                frame._dataSize++;  // 增加已用的frame大小
             }
-            else
-                frame._dataSize++;
 
-            // 將新頁面加入frame
-            frame._qdata.push(referenceString[i]);         // 將新頁面加入佇列（FIFO）
+            // 將新頁面加入frame佇列
+            frame._qdata.push(referenceString[i]);  // 將新頁面加入佇列（FIFO）
 
             // 觸發中斷
             Interrupt(frame, i);
         }
     }
+
 }
 
 // Enhanced Second Chance Algorithm
