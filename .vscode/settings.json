@@ -1,6 +1,7 @@
 {
   "files.associations": {
     "*.ejs": "html",
+    "*.c": "c",
     "unordered_set": "cpp",
     "array": "cpp",
     "atomic": "cpp",
@@ -46,7 +47,8 @@
     "typeinfo": "cpp",
     "chrono": "cpp",
     "ctime": "cpp",
-    "ratio": "cpp"
+    "ratio": "cpp",
+    "queue": "cpp"
   },
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",
