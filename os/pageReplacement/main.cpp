@@ -4,6 +4,7 @@
 #include <utility>
 #include "./tool.h"
 #include "./algo.h"
+#include <fstream>
 using namespace std;
 
 
@@ -129,10 +130,97 @@ void show_datas(vector<vector<T_Frame>> &frames, vector<vector<T_Frame>> &frames
 
 }
 
-void print_to_file(){
-    // print to file
-    
+void write_data(ofstream& pageFile, ofstream& interruptFile, ofstream& diskFile, vector<T_Frame>& frames) {
+    // Write page faults, interrupts, and disk writes for a specific frame
+    for (auto& frame : frames) {
+        pageFile << frame._pageFaults << endl;
+        interruptFile << frame._interrupts << endl;
+        diskFile << frame._diskWrites << endl;
+    }
 }
+
+void print_to_file(vector<vector<T_Frame>> &frames, vector<vector<T_Frame>> &framesLocal, vector<vector<T_Frame>> &framesMine) {
+    // write local data
+    ofstream l_p_enha("./local/pagefault/enhance.txt"); 
+    ofstream l_p_fifo("./local/pagefault/fifo.txt"); 
+    ofstream l_p_mine("./local/pagefault/mine.txt"); 
+    ofstream l_p_opti("./local/pagefault/optimal.txt"); 
+    
+    ofstream l_i_enha("./local/interrupt/enhance.txt"); 
+    ofstream l_i_fifo("./local/interrupt/fifo.txt"); 
+    ofstream l_i_mine("./local/interrupt/mine.txt"); 
+    ofstream l_i_opti("./local/interrupt/optimal.txt"); 
+    
+    ofstream l_d_enha("./local/diskwrite/enhance.txt"); 
+    ofstream l_d_fifo("./local/diskwrite/fifo.txt"); 
+    ofstream l_d_mine("./local/diskwrite/mine.txt"); 
+    ofstream l_d_opti("./local/diskwrite/optimal.txt"); 
+    
+    // write random data
+    ofstream r_p_enha("./random/pagefault/enhance.txt"); 
+    ofstream r_p_fifo("./random/pagefault/fifo.txt"); 
+    ofstream r_p_mine("./random/pagefault/mine.txt"); 
+    ofstream r_p_opti("./random/pagefault/optimal.txt"); 
+    
+    ofstream r_i_enha("./random/interrupt/enhance.txt"); 
+    ofstream r_i_fifo("./random/interrupt/fifo.txt"); 
+    ofstream r_i_mine("./random/interrupt/mine.txt"); 
+    ofstream r_i_opti("./random/interrupt/optimal.txt"); 
+    
+    ofstream r_d_enha("./random/diskwrite/enhance.txt"); 
+    ofstream r_d_fifo("./random/diskwrite/fifo.txt"); 
+    ofstream r_d_mine("./random/diskwrite/mine.txt"); 
+    ofstream r_d_opti("./random/diskwrite/optimal.txt"); 
+
+    // write mine data
+    ofstream m_p_enha("./mine/pagefault/enhance.txt"); 
+    ofstream m_p_fifo("./mine/pagefault/fifo.txt"); 
+    ofstream m_p_mine("./mine/pagefault/mine.txt"); 
+    ofstream m_p_opti("./mine/pagefault/optimal.txt"); 
+    
+    ofstream m_i_enha("./mine/interrupt/enhance.txt"); 
+    ofstream m_i_fifo("./mine/interrupt/fifo.txt"); 
+    ofstream m_i_mine("./mine/interrupt/mine.txt"); 
+    ofstream m_i_opti("./mine/interrupt/optimal.txt"); 
+    
+    ofstream m_d_enha("./mine/diskwrite/enhance.txt"); 
+    ofstream m_d_fifo("./mine/diskwrite/fifo.txt"); 
+    ofstream m_d_mine("./mine/diskwrite/mine.txt"); 
+    ofstream m_d_opti("./mine/diskwrite/optimal.txt"); 
+
+    // Random data output
+    write_data(r_p_enha, r_i_enha, r_d_enha, frames[2]); // enhance
+    write_data(r_p_fifo, r_i_fifo, r_d_fifo, frames[0]); // fifo
+    write_data(r_p_mine, r_i_mine, r_d_mine, frames[3]); // mine
+    write_data(r_p_opti, r_i_opti, r_d_opti, frames[1]); // optimal
+
+    // Local data output
+    write_data(l_p_enha, l_i_enha, l_d_enha, framesLocal[2]); // enhance
+    write_data(l_p_fifo, l_i_fifo, l_d_fifo, framesLocal[0]); // fifo
+    write_data(l_p_mine, l_i_mine, l_d_mine, framesLocal[3]); // mine
+    write_data(l_p_opti, l_i_opti, l_d_opti, framesLocal[1]); // optimal
+
+    // Mine data output
+    write_data(m_p_enha, m_i_enha, m_d_enha, framesMine[2]); // enhance
+    write_data(m_p_fifo, m_i_fifo, m_d_fifo, framesMine[0]); // fifo
+    write_data(m_p_mine, m_i_mine, m_d_mine, framesMine[3]); // mine
+    write_data(m_p_opti, m_i_opti, m_d_opti, framesMine[1]); // optimal
+
+    // Close all files (not necessary since destructors will handle it, but it's good practice)
+    l_p_enha.close(); l_p_fifo.close(); l_p_mine.close(); l_p_opti.close();
+    l_i_enha.close(); l_i_fifo.close(); l_i_mine.close(); l_i_opti.close();
+    l_d_enha.close(); l_d_fifo.close(); l_d_mine.close(); l_d_opti.close();
+
+    r_p_enha.close(); r_p_fifo.close(); r_p_mine.close(); r_p_opti.close();
+    r_i_enha.close(); r_i_fifo.close(); r_i_mine.close(); r_i_opti.close();
+    r_d_enha.close(); r_d_fifo.close(); r_d_mine.close(); r_d_opti.close();
+
+    m_p_enha.close(); m_p_fifo.close(); m_p_mine.close(); m_p_opti.close();
+    m_i_enha.close(); m_i_fifo.close(); m_i_mine.close(); m_i_opti.close();
+    m_d_enha.close(); m_d_fifo.close(); m_d_mine.close(); m_d_opti.close();
+
+}
+
 
 int main() {
     vector<vector<T_Frame>> frames, framesLocal, framesMine;
@@ -185,7 +273,7 @@ int main() {
 
     show_datas(frames, framesLocal, framesMine);
 
-    print_to_file();
+    print_to_file(frames, framesLocal, framesMine);
 
     return 0;
 }
