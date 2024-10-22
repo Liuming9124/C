@@ -6,7 +6,7 @@ set key bmargin
 
 set xlabel 'page size'
 set ylabel 'interrupt'
-set output 'localin.png'
+set output 'randin.png'
 
 plot    './interrupt/enhance.txt' pt 1 lw 3 ps 1 lc rgb "blue"  title 'enhance' with lines ,\
         './interrupt/fifo.txt'    pt 1 lw 3 ps 1 lc rgb "red"   title 'fifo'    with lines ,\

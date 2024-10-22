@@ -6,7 +6,7 @@ set key bmargin
 
 set xlabel 'page size'
 set ylabel 'page fault'
-set output 'localpg.png'
+set output 'randpg.png'
 
 plot    './pagefault/enhance.txt' pt 1 lw 3 ps 1 lc rgb "blue"  title 'enhance' with lines ,\
         './pagefault/fifo.txt'    pt 1 lw 3 ps 1 lc rgb "red"   title 'fifo'    with lines ,\

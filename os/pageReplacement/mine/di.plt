@@ -6,7 +6,7 @@ set key bmargin
 
 set xlabel 'page size'
 set ylabel 'disk write'
-set output 'localdi.png'
+set output 'minedi.png'
 
 plot    './diskwrite/enhance.txt' pt 1 lw 3 ps 1 lc rgb "blue"  title 'enhance' with lines ,\
         './diskwrite/fifo.txt'    pt 1 lw 3 ps 1 lc rgb "red"   title 'fifo'    with lines ,\
