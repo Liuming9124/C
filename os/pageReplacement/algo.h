@@ -31,12 +31,12 @@ void Init_frame(T_Frame &frame, int pageSize){
     frame._qdata = queue<int>();
     frame._qdirty = queue<int>();
     frame._qrefer = queue<int>();
-    frame._dirtyBit.resize(pageSize);
+    // frame._dirtyBit.resize(pageSize);
     frame._referBit.resize(pageSize);
-    for (int i=0; i<pageSize; i++){
-        frame._dirtyBit[i] = 0;
-        frame._referBit[i] = 0;
-    }
+    // for (int i=0; i<pageSize; i++){
+    //     frame._dirtydata[i] = 0;
+    //     frame._referBit[i] = 0;
+    // }
     frame._dataSize = 0;
     frame._pageFaults = 0;
     frame._diskWrites = 0;
@@ -104,7 +104,7 @@ void optimalPageReplacement(vector<int>& referenceString, vector<int>& dirtyStri
             // Page Fault
             frame._pageFaults++;
             // 如果frame已經滿了，移除未來最少用的頁面
-            if (frame._dataSize == frame._pageSize) {
+            if (frame._data.size() == frame._pageSize) {
                 int farthest = -1;
                 int indexToRemove = -1;
                 // 查找最遲再被使用的頁面
@@ -140,8 +140,7 @@ void optimalPageReplacement(vector<int>& referenceString, vector<int>& dirtyStri
                     frame._dirtydata.erase(frame._dirtydata.begin() + indexToRemove);
                 }
             }
-            else
-                frame._dataSize++;
+            
             // 將新頁面加入frame
             frame._data.push_back(referenceString[i]);         // 將新頁面加入佇列（FIFO）
             frame._dirtydata.push_back(dirtyString[i]);        // 將新頁面的髒位加入佇列
@@ -175,7 +174,7 @@ void fifoPageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
             frame._pageFaults++;
 
             // 如果frame已經滿了，移除最早加入的頁面
-            if (frame._dataSize == frame._pageSize) {
+            if (frame._qdata.size() == frame._pageSize) {
                 int page_to_remove = frame._qdata.front();
                 frame._qdata.pop();
                 
@@ -184,11 +183,8 @@ void fifoPageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
                 frame._qdirty.pop();
                 
                 if (dirty_to_remove == 1) {
-                    // 如果頁面是髒的，則寫回磁碟
-                    DiskWrite(frame);
+                    frame._diskWrites++;
                 }
-            } else {
-                frame._dataSize++;  // 增加已用的frame大小
             }
 
             // 將新頁面加入frame佇列
@@ -206,7 +202,6 @@ void fifoPageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
 void enSecChancePageReplacement(vector<int>& referenceString, vector<int>& dirtyString, T_Frame& frame) {
     frame._data.clear();
     frame._data.reserve(frame._pageSize);
-
     int num_string = referenceString.size();
     for (int i = 0; i < num_string; i++) {
         // 檢查當前頁面是否在frame中，若不在，發生 Page Fault
@@ -214,67 +209,43 @@ void enSecChancePageReplacement(vector<int>& referenceString, vector<int>& dirty
             // Page Fault
             frame._pageFaults++;
             // 如果frame已經滿了，開始進行替換
-            if (frame._dataSize == frame._pageSize) {
+            if (frame._data.size() == frame._pageSize) {
                 bool pageReplaced = false;
-                int checkedPages = 0;  // 計算檢查的頁面數量，用來判斷是否需要強制替換
+                int checkedPages = 2;  // 計算檢查的頁面數量，用來判斷是否需要強制替換
 
-                while (!pageReplaced && checkedPages < frame._pageSize) {
-                    int page_to_remove = frame._qdata.front();  // 取得佇列前面的頁面
-                    frame._qdata.pop();  // 從佇列中移除該頁面
-
-                    int dirty = frame._qdirty.front();  // 取得髒位
-                    frame._qdirty.pop();  // 移除髒位
-
-                    int refer = frame._qrefer.front();  // 取得參考位
-                    frame._qrefer.pop();  // 移除參考位
-
-                    // 找到該頁面的索引
-                    auto it = find(frame._data.begin(), frame._data.end(), page_to_remove);
-                    int pageIndex = distance(frame._data.begin(), it);
-
-                    // 檢查該頁面的參考位和髒位
-                    if (refer == 0 && dirty == 0) {
-                        // (0,0) -> 最近沒有被使用，也沒有被修改，直接替換
-                        DiskWrite(frame);  // 檢查是否需要寫回磁碟
-                        frame._data.erase(frame._data.begin() + pageIndex);
-                        pageReplaced = true;
-                    } else if (refer == 0 && dirty == 1) {
-                        // (0,1) -> 最近沒有被使用，但有被修改，需寫回磁碟再替換
-                        DiskWrite(frame);  // 觸發磁碟寫入
-                        frame._data.erase(frame._data.begin() + pageIndex);
-                        pageReplaced = true;
-                    } else {
-                        // 重設參考位並將頁面重新加入佇列
-                        refer = 0;  // 重設參考位
-                        frame._qdata.push(page_to_remove);  // 將頁面重新加入佇列
-                        frame._qdirty.push(dirty);  // 保持髒位不變
-                        frame._qrefer.push(refer);  // 參考位重設為0
+                int page_to_remove=0;
+                for (int i=0; i<2 && !pageReplaced; i++) {
+                    int order = 0;
+                    for (int  j = 0; j < frame._data.size(); j++)
+                    {
+                        if (frame._referBit[j] == 0 && frame._dirtydata[j] == 0) {
+                            page_to_remove = j;
+                            order = 0;
+                            pageReplaced = true;
+                            break;
+                        }
+                        else if (frame._referBit[j] == 0 && frame._dirtydata[j] == 1 && order > 1) {
+                            order = 1;
+                            page_to_remove = j;
+                            pageReplaced = true;
+                        } else {
+                            frame._referBit[j] = 0;
+                        }
                     }
-                    checkedPages++;  // 增加檢查的頁面數量
                 }
-
-                // 如果經過一輪檢查後仍未替換頁面，則強制替換第一個頁面
-                if (!pageReplaced) {
-                    int page_to_force_replace = frame._qdata.front();  // 強制取得第一個頁面
-                    frame._qdata.pop();  // 從佇列中移除該頁面
-
-                    auto it = find(frame._data.begin(), frame._data.end(), page_to_force_replace);
-                    int pageIndex = distance(frame._data.begin(), it);
-
-                    DiskWrite(frame);  // 檢查是否需要寫回磁碟
-                    frame._data.erase(frame._data.begin() + pageIndex);
-                    // 不需要再加入 refer 和 dirty，因為這是強制替換
+                // 把第page_to_remove筆資料從frame 的vector中移除
+                frame._data.erase(frame._data.begin() + page_to_remove);
+                if (frame._dirtydata[page_to_remove] == 1) {
+                    frame._diskWrites++;
                 }
-            } else {
-                // 如果frame還未滿，增加已用的frame大小
-                frame._dataSize++;
+                frame._dirtydata.erase(frame._dirtydata.begin() + page_to_remove);
             }
+
             // 新頁面加入frame，設置對應的髒位和參考位
             frame._data.push_back(referenceString[i]);  // 新頁面加入數據
-            frame._qdirty.push(dirtyString[i]);  // 新頁面的髒位加入佇列
+            frame._dirtydata.push_back(dirtyString[i]);  // 新頁面的髒位加入佇列
+            frame._referBit.push_back(1);  // 參考位設置為1
 
-            frame._qrefer.push(1);  // 參考位設置為1
-            frame._qdata.push(referenceString[i]);  // 新頁面加入佇列
             // 觸發中斷
             Interrupt(frame, i);
         } else {
@@ -296,7 +267,7 @@ void minePageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
             frame._pageFaults++;
 
             // 如果frame已經滿了，開始頁面置換
-            if (frame._dataSize == frame._pageSize) {
+            if (frame._qdata.size() == frame._pageSize) {
                 bool pageReplaced = false;
 
                 while (!pageReplaced) {
@@ -326,8 +297,6 @@ void minePageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
                 }
                 // 模擬磁碟寫入
                 DiskWrite(frame);
-            } else {
-                frame._dataSize++;  // 增加已用的frame大小
             }
 
             // 新頁面加入frame，設置二進制參考位為 10（最高優先級）
