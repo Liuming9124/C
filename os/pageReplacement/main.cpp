@@ -44,7 +44,7 @@ void gen_local_string(vector<int> &xx, int string_length){
     // 生成每個program的locality
     for (int i = 0; i < ProgramData.size(); i++)
     {
-        // 設計每個program的locality在1~100之間
+        // 設計每個program的locality在1~90之間
         int duration = tool.rand_int(10, 90);
         int startLocality = tool.rand_int(0, 1200-duration);
         int endLocality = startLocality + duration;
@@ -60,13 +60,13 @@ void gen_mine_string(vector<int> &xx, int string_length){
     xx.reserve(string_length);
     
     vector<int> ProgramData;
-    ProgramData.reserve(20);
+    ProgramData.reserve(string_length/10);
 
     // 生成每個program的長度，所有program的長度總和等於string_length
     int count = 0;
     while (count <= string_length)
     {
-        int numData = tool.rand_int(10, 20);
+        int numData = tool.rand_int(100, 200);
         bool flag = false;
         if (numData+count > string_length){
             numData -= numData+count - string_length;
@@ -80,8 +80,8 @@ void gen_mine_string(vector<int> &xx, int string_length){
     // 生成每個program的locality
     for (int i = 0; i < ProgramData.size(); i++)
     {
-        // 設計每個program的locality在50~150之間
-        int duration = tool.rand_int(150, 250);
+        // 設計每個program的locality在150~250之間
+        int duration = tool.rand_int(100, 200);
         int startLocality = tool.rand_int(0, 1200-duration);
         int endLocality = startLocality + duration;
 
