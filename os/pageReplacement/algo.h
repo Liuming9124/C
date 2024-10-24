@@ -46,27 +46,11 @@ void Init_frames(vector<vector<T_Frame>> &frames)
     }
 }
 
-/*
-異常中斷：可能在某些特定的時候，有一定機率會遇到異常情況，從而觸發中斷。
-隨機中斷行為：利用隨機數模擬一些不確定的情況，這些隨機中斷可能來自於硬體故障、計時器中斷、或者其它不可預測的事件。
-*/
-
 void Interrupt(T_Frame &frame)
 {
     frame._interrupts++;
-    if (tool.rand_double(0, 1) < 0.1)
-        frame._interrupts++;
 }
 
-/*
-當某頁面的訪問次數達到某個閾值時，觸發磁碟寫入，模擬這種頻繁訪問和修改的行為。
-
-讀取次數（寫入頻繁修改的頁面）
-原因：某些頁面可能會被頻繁訪問和修改。當這樣的頁面被反覆使用且髒位為 1 時，它們最終可能會被替換並寫回磁碟，以保證數據一致性。
-
-真實情境：例如，數據庫查詢或更新操作會反覆讀寫某些頁面，這些頁面可能在一段時間內被頻繁修改。最終，這些頁面可能會因為內存管理策略被替換，並因此觸發磁碟寫入。
-
-*/
 void DiskWrite(T_Frame &frame) {
     int dirty = frame._qdirty.front();  // 取得隊列中的髒位
     frame._qdirty.pop();  // 移除隊列中的這個髒位
@@ -75,11 +59,7 @@ void DiskWrite(T_Frame &frame) {
     if (dirty == 1) {
         // 增加磁碟寫入次數
         frame._diskWrites++;
-        // 重置髒位並放回佇列，表示這個頁面已經寫回磁碟
-        frame._qdirty.push(0);  // 髒位重置為0
-    } else {
-        // 如果髒位為0，無需磁碟寫入，只將該髒位放回佇列
-        frame._qdirty.push(dirty);  // 保持原樣
+        Interrupt(frame);
     }
 }
 
@@ -124,6 +104,7 @@ void optimalPageReplacement(vector<int>& referenceString, vector<int>& dirtyStri
                     // 模擬磁碟寫入
                     if (frame._dirtydata[indexToRemove] == 1) {
                         frame._diskWrites++;
+                        frame._interrupts++;
                     }
                     // 移除最遲會被使用的頁面和對應的髒位
                     frame._dirtydata.erase(frame._dirtydata.begin() + indexToRemove);
@@ -172,6 +153,7 @@ void fifoPageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
                 
                 if (dirty_to_remove == 1) {
                     frame._diskWrites++;
+                    frame._interrupts++;
                 }
             }
 
@@ -247,6 +229,7 @@ void enSecChancePageReplacement(vector<int>& referenceString, vector<int>& dirty
                 frame._referdata.erase(frame._referdata.begin() + page_to_remove);
                 if (frame._dirtydata[page_to_remove] == 1) {
                     frame._diskWrites++;
+                    frame._interrupts++;
                 }
                 frame._dirtydata.erase(frame._dirtydata.begin() + page_to_remove);
             }
