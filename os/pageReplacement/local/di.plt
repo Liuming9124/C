@@ -1,7 +1,7 @@
-set terminal png font arial 14 size 800,600
+set terminal png font arial 16 size 800,600
 set key bmargin
 
-set xlabel 'page size'
+set xlabel 'frame number'
 set ylabel 'local string disk write'
 set output 'localdi.png'
 
