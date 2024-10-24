@@ -14,29 +14,21 @@ typedef struct frame
 {
     int _pageSize;
     int _dataSize;
-    vector<int> _data;
-    vector<int> _dirtydata;
+    vector<int> _data, _dirtydata, _referdata;
     queue<int> _qdata, _qdirty, _qrefer;
-    vector<int> _dirtyBit, _referBit;
     int _pageFaults;
     int _diskWrites;
     int _interrupts;
-    vector<int> _interruptIndex;
 } T_Frame;
 
 void Init_frame(T_Frame &frame, int pageSize){
     frame._pageSize = pageSize;
     frame._data.resize(pageSize);
-    frame._dirtydata.resize(pageSize);
     frame._qdata = queue<int>();
     frame._qdirty = queue<int>();
     frame._qrefer = queue<int>();
-    // frame._dirtyBit.resize(pageSize);
-    frame._referBit.resize(pageSize);
-    // for (int i=0; i<pageSize; i++){
-    //     frame._dirtydata[i] = 0;
-    //     frame._referBit[i] = 0;
-    // }
+    frame._dirtydata.resize(pageSize);
+    frame._referdata.resize(pageSize);
     frame._dataSize = 0;
     frame._pageFaults = 0;
     frame._diskWrites = 0;
@@ -59,14 +51,11 @@ void Init_frames(vector<vector<T_Frame>> &frames)
 隨機中斷行為：利用隨機數模擬一些不確定的情況，這些隨機中斷可能來自於硬體故障、計時器中斷、或者其它不可預測的事件。
 */
 
-void Interrupt(T_Frame &frame, int currentPageIndex)
+void Interrupt(T_Frame &frame)
 {
     frame._interrupts++;
-    frame._interruptIndex.push_back(currentPageIndex);
-    if (tool.rand_double(0, 1) < 0.1){
+    if (tool.rand_double(0, 1) < 0.1)
         frame._interrupts++;
-        frame._interruptIndex.push_back(currentPageIndex);
-    }
 }
 
 /*
@@ -146,7 +135,7 @@ void optimalPageReplacement(vector<int>& referenceString, vector<int>& dirtyStri
             frame._dirtydata.push_back(dirtyString[i]);        // 將新頁面的髒位加入佇列
 
             // 觸發中斷
-            Interrupt(frame, i);
+            Interrupt(frame);
         }
     }
 }
@@ -175,9 +164,8 @@ void fifoPageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
 
             // 如果frame已經滿了，移除最早加入的頁面
             if (frame._qdata.size() == frame._pageSize) {
-                int page_to_remove = frame._qdata.front();
+                // 移除最早加入的頁面
                 frame._qdata.pop();
-                
                 // 取得髒位並判斷是否需要進行磁碟寫入
                 int dirty_to_remove = frame._qdirty.front();
                 frame._qdirty.pop();
@@ -192,7 +180,7 @@ void fifoPageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
             frame._qdirty.push(dirtyString[i]);  // 將新頁面的髒位加入佇列
 
             // 觸發中斷
-            Interrupt(frame, i);
+            Interrupt(frame);
         }
     }
 }
@@ -201,11 +189,26 @@ void fifoPageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
 // Enhanced Second Chance Algorithm
 void enSecChancePageReplacement(vector<int>& referenceString, vector<int>& dirtyString, T_Frame& frame) {
     frame._data.clear();
+    frame._referdata.clear();
+    frame._dirtydata.clear();
     frame._data.reserve(frame._pageSize);
+    frame._referdata.reserve(frame._pageSize);
+    frame._dirtydata.reserve(frame._pageSize);
+
     int num_string = referenceString.size();
+    int pointer=0;
+
     for (int i = 0; i < num_string; i++) {
         // 檢查當前頁面是否在frame中，若不在，發生 Page Fault
-        if (find(frame._data.begin(), frame._data.end(), referenceString[i]) == frame._data.end()) {
+        int findIndex = -1;
+        for (int j = 0; j < frame._data.size(); j++) {
+            if (frame._data[j] == referenceString[i]) {
+                findIndex = j;
+                break;
+            }
+        }
+
+        if ( findIndex == -1) {
             // Page Fault
             frame._pageFaults++;
             // 如果frame已經滿了，開始進行替換
@@ -214,27 +217,34 @@ void enSecChancePageReplacement(vector<int>& referenceString, vector<int>& dirty
                 int checkedPages = 2;  // 計算檢查的頁面數量，用來判斷是否需要強制替換
 
                 int page_to_remove=0;
-                for (int i=0; i<2 && !pageReplaced; i++) {
-                    int order = 0;
-                    for (int  j = 0; j < frame._data.size(); j++)
-                    {
-                        if (frame._referBit[j] == 0 && frame._dirtydata[j] == 0) {
-                            page_to_remove = j;
-                            order = 0;
-                            pageReplaced = true;
-                            break;
-                        }
-                        else if (frame._referBit[j] == 0 && frame._dirtydata[j] == 1 && order > 1) {
-                            order = 1;
-                            page_to_remove = j;
-                            pageReplaced = true;
-                        } else {
-                            frame._referBit[j] = 0;
+                int order = 2;
+                int tmpPtr;
+                for (int  j = 0; j < frame._data.size() * 2 && !pageReplaced; j++)
+                {
+                    int index = (pointer + j) % frame._data.size();
+                    if (frame._referdata[index] == 0 && frame._dirtydata[index] == 0 && order!=0) {
+                        page_to_remove = index;
+                        order = 0;
+                        pageReplaced = true;
+                        tmpPtr = index;
+                        break;
+                    }
+                    else if (frame._referdata[index] == 0 && frame._dirtydata[index] == 1 && order > 1) {
+                        order = 1;
+                        page_to_remove = index;
+                        pageReplaced = true;
+                        tmpPtr = index;
+                    }
+                    else {
+                        if (j >= frame._data.size()) {
+                            frame._referdata[index] = 0;
                         }
                     }
                 }
+                pointer = tmpPtr;
                 // 把第page_to_remove筆資料從frame 的vector中移除
                 frame._data.erase(frame._data.begin() + page_to_remove);
+                frame._referdata.erase(frame._referdata.begin() + page_to_remove);
                 if (frame._dirtydata[page_to_remove] == 1) {
                     frame._diskWrites++;
                 }
@@ -244,14 +254,14 @@ void enSecChancePageReplacement(vector<int>& referenceString, vector<int>& dirty
             // 新頁面加入frame，設置對應的髒位和參考位
             frame._data.push_back(referenceString[i]);  // 新頁面加入數據
             frame._dirtydata.push_back(dirtyString[i]);  // 新頁面的髒位加入佇列
-            frame._referBit.push_back(1);  // 參考位設置為1
+            frame._referdata.push_back(1);  // 參考位設置為1
 
             // 觸發中斷
-            Interrupt(frame, i);
+            Interrupt(frame);
         } else {
             // 如果頁面命中，設置參考位為1
             int pageIndex = find(frame._data.begin(), frame._data.end(), referenceString[i]) - frame._data.begin();
-            frame._referBit[pageIndex] = 1;
+            frame._referdata[pageIndex] = 1;
         }
     }
 }
@@ -278,20 +288,20 @@ void minePageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
                     int pageIndex = distance(frame._data.begin(), it);
 
                     // 檢查參考位：將二進制參考位解讀
-                    int referBit = frame._referBit[pageIndex];
+                    int referBit = frame._referdata[pageIndex];
 
                     if ((referBit & 0b10) == 0 && (referBit & 0b01) == 0) {
                         // 參考位為 00 -> 最近沒有被使用，可以被替換
                         frame._data.erase(frame._data.begin() + pageIndex);
-                        frame._referBit.erase(frame._referBit.begin() + pageIndex);
+                        frame._referdata.erase(frame._referdata.begin() + pageIndex);
                         pageReplaced = true;
                     } else if ((referBit & 0b10) == 0b10) {
                         // 參考位為 10 -> 將其設置為 01
-                        frame._referBit[pageIndex] = 0b01;  // 降級參考位
+                        frame._referdata[pageIndex] = 0b01;  // 降級參考位
                         frame._qdata.push(page_to_remove);  // 給該頁面第二次機會
                     } else if ((referBit & 0b01) == 0b01) {
                         // 參考位為 01 -> 將其設置為 00
-                        frame._referBit[pageIndex] = 0b00;  // 降級參考位
+                        frame._referdata[pageIndex] = 0b00;  // 降級參考位
                         frame._qdata.push(page_to_remove);  // 給該頁面第三次機會
                     }
                 }
@@ -302,16 +312,16 @@ void minePageReplacement(vector<int>& referenceString, vector<int>& dirtyString,
             // 新頁面加入frame，設置二進制參考位為 10（最高優先級）
             frame._data.push_back(referenceString[i]);  // 新頁面加入數據
             frame._qdata.push(referenceString[i]);      // 新頁面加入佇列
-            frame._referBit.push_back(0b10);            // 將參考位設為 10
+            frame._referdata.push_back(0b10);            // 將參考位設為 10
             frame._qdirty.push(dirtyString[i]);         // 新頁面的髒位加入佇列
             
             // 觸發中斷
-            Interrupt(frame, i);
+            Interrupt(frame);
         }
         else {
             // 如果頁面命中，將二進制參考位設為 10
             int pageIndex = find(frame._data.begin(), frame._data.end(), referenceString[i]) - frame._data.begin();
-            frame._referBit[pageIndex] = 0b10;  // 命中時，將參考位設為 10
+            frame._referdata[pageIndex] = 0b10;  // 命中時，將參考位設為 10
         }
     }
 }
