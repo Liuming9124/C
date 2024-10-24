@@ -60,9 +60,10 @@ void gen_mine_string(vector<int> &xx, int string_length){
     xx.reserve(string_length);
     
     vector<int> ProgramData;
+    // 固定每個program的長度，模擬特定core常駐特定程式的情況
     ProgramData.reserve(string_length/10);
 
-    // 生成每個program的長度，所有program的長度總和等於string_length
+    // 把 locality 增大，讓每個 program 有更大的 locality
     int count = 0;
     while (count <= string_length)
     {
