@@ -1,173 +1,156 @@
+#include "Socket.h"
 #include <iostream>
-#include <string>
 #include <unordered_map>
+#include <string>
 #include <vector>
-#include <thread>
+#include <sstream>
+#include <fstream>
 #include <mutex>
-#include <condition_variable>
-#include <cstring>
-#include <winsock2.h>
-#pragma comment(lib, "ws2_32.lib")
-
-#define PORT 8080
+#include <shared_mutex>
+#include <thread>
 
 using namespace std;
 
-struct File {
+// Capability list structure
+struct FilePermissions {
     string owner;
-    string group;
-    string permissions; // Format: "rwxrwxrwx"
-    string content;
-    mutex file_mutex;
+    string permissions; // rwxrwxrwx (owner, group, others)
 };
 
-unordered_map<string, File> files;
-mutex files_mutex;
+// Global variables
+unordered_map<string, FilePermissions> capabilityList;
+unordered_map<string, shared_mutex> fileLocks; // File locks
+mutex capabilityListMutex;
 
-void handleClient(SOCKET client_socket) {
-    char buffer[1024] = {0};
-    while (true) {
-        int bytes_read = recv(client_socket, buffer, 1024, 0);
-        if (bytes_read <= 0) break;
+// Utility function to check permissions
+bool checkPermission(const string& user, const string& operation, const string& fileName) {
+    lock_guard<mutex> lock(capabilityListMutex);
 
-        string command(buffer);
-        memset(buffer, 0, sizeof(buffer));
+    if (capabilityList.find(fileName) == capabilityList.end())
+        return false; // File does not exist
 
-        string response;
-        {
-            lock_guard<mutex> guard(files_mutex);
-            // Parse command and perform actions
-            vector<string> tokens;
-            size_t pos;
-            while ((pos = command.find(' ')) != string::npos) {
-                tokens.push_back(command.substr(0, pos));
-                command.erase(0, pos + 1);
-            }
-            tokens.push_back(command);
+    const FilePermissions& filePerm = capabilityList[fileName];
+    int index = (user == filePerm.owner) ? 0 : 3; // Owner vs others
+    if (operation == "read") index += 0;
+    if (operation == "write") index += 1;
 
-            if (tokens[0] == "create" && tokens.size() == 3) {
-                string filename = tokens[1];
-                string permissions = tokens[2];
+    return filePerm.permissions[index] == 'r' || filePerm.permissions[index] == 'w';
+}
 
-                if (files.find(filename) != files.end()) {
-                    response = "Error: File already exists.";
-                } else {
-                    files[filename] = {"", "AOS-students", permissions, ""};
-                    response = "File created successfully.";
-                }
-            } else if (tokens[0] == "read" && tokens.size() == 2) {
-                string filename = tokens[1];
-
-                if (files.find(filename) == files.end()) {
-                    response = "Error: File does not exist.";
-                } else {
-                    File &file = files[filename];
-                    lock_guard<mutex> file_guard(file.file_mutex);
-
-                    if (file.permissions[0] != 'r') {
-                        response = "Error: No read permission.";
-                    } else {
-                        response = "File content: " + file.content;
-                    }
-                }
-            } else if (tokens[0] == "write" && tokens.size() >= 3) {
-                string filename = tokens[1];
-                string mode = tokens[2];
-                string content = tokens.size() > 3 ? tokens[3] : "";
-
-                if (files.find(filename) == files.end()) {
-                    response = "Error: File does not exist.";
-                } else {
-                    File &file = files[filename];
-                    lock_guard<mutex> file_guard(file.file_mutex);
-
-                    if (file.permissions[1] != 'w') {
-                        response = "Error: No write permission.";
-                    } else {
-                        if (mode == "o") {
-                            file.content = content;
-                        } else if (mode == "a") {
-                            file.content += content;
-                        } else {
-                            response = "Error: Invalid write mode.";
-                            continue;
-                        }
-                        response = "File written successfully.";
-                    }
-                }
-            } else if (tokens[0] == "mode" && tokens.size() == 3) {
-                string filename = tokens[1];
-                string permissions = tokens[2];
-
-                if (files.find(filename) == files.end()) {
-                    response = "Error: File does not exist.";
-                } else {
-                    File &file = files[filename];
-                    file.permissions = permissions;
-                    response = "Permissions updated successfully.";
-                }
-            } else {
-                response = "Error: Invalid command.";
-            }
-        }
-
-        send(client_socket, response.c_str(), response.size(), 0);
+// Debug function to print the current capability list
+void printCapabilityList() {
+    lock_guard<mutex> lock(capabilityListMutex);
+    cout << "Current Capability List:" << endl;
+    for (const auto& entry : capabilityList) {
+        cout << "File: " << entry.first
+             << ", Owner: " << entry.second.owner
+             << ", Permissions: " << entry.second.permissions << endl;
     }
+}
 
-    closesocket(client_socket);
+// Function to handle client commands
+void handleClient(Connection conn) {
+    try {
+        while (true) {
+            string command = conn.rx();
+            if (command.empty()) break;
+
+            vector<string> tokens;
+            istringstream stream(command);
+            string token;
+            while (stream >> token) tokens.push_back(token);
+
+            if (tokens[0] == "create" && tokens.size() == 4) {
+                // Command: create <filename> <permissions> <owner>
+                lock_guard<mutex> lock(capabilityListMutex);
+                capabilityList[tokens[1]] = {tokens[3], tokens[2]};
+                fileLocks[tokens[1]]; // Initialize file lock
+                conn.tx("File created successfully");
+
+            } else if (tokens[0] == "read" && tokens.size() == 3) {
+                // Command: read <filename> <user>
+                string fileName = tokens[1];
+                string user = tokens[2];
+
+                if (!checkPermission(user, "read", fileName)) {
+                    conn.tx("Permission denied");
+                    continue;
+                }
+
+                shared_lock<shared_mutex> lock(fileLocks[fileName]);
+                ifstream file(fileName);
+                if (file.is_open()) {
+                    stringstream buffer;
+                    buffer << file.rdbuf();
+                    conn.tx(buffer.str());
+                } else {
+                    conn.tx("File not found");
+                }
+
+            } else if (tokens[0] == "write" && tokens.size() >= 3) {
+                // Command: write <filename> <user> <content>
+                string fileName = tokens[1];
+                string user = tokens[2];
+                string content;
+                for (size_t i = 3; i < tokens.size(); ++i) {
+                    if (i > 3) content += " ";
+                    content += tokens[i];
+                }
+
+                if (!checkPermission(user, "write", fileName)) {
+                    conn.tx("Permission denied");
+                    continue;
+                }
+
+                unique_lock<shared_mutex> lock(fileLocks[fileName]);
+                ofstream file(fileName, ios::app);
+                if (file.is_open()) {
+                    file << content << endl;
+                    conn.tx("File written successfully");
+                } else {
+                    conn.tx("File not found");
+                }
+
+            } else if (tokens[0] == "mode" && tokens.size() == 4) {
+                // Command: mode <filename> <new-permissions> <user>
+                string fileName = tokens[1];
+                string newPermissions = tokens[2];
+                string user = tokens[3];
+
+                lock_guard<mutex> lock(capabilityListMutex);
+                if (capabilityList.find(fileName) == capabilityList.end()) {
+                    conn.tx("File not found");
+                    continue;
+                }
+
+                if (capabilityList[fileName].owner != user) {
+                    conn.tx("Permission denied");
+                    continue;
+                }
+
+                capabilityList[fileName].permissions = newPermissions;
+                conn.tx("Permissions updated");
+
+            } else {
+                conn.tx("Invalid command");
+            }
+
+            printCapabilityList(); // Print capability list after each command
+        }
+    } catch (const exception& e) {
+        cerr << "Error handling client: " << e.what() << endl;
+    }
 }
 
 int main() {
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        cerr << "WSAStartup failed." << endl;
-        return -1;
-    }
-
-    SOCKET server_fd;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
-        cerr << "Socket creation failed." << endl;
-        WSACleanup();
-        return -1;
-    }
-
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) == SOCKET_ERROR) {
-        cerr << "Bind failed." << endl;
-        closesocket(server_fd);
-        WSACleanup();
-        return -1;
-    }
-
-    if (listen(server_fd, 3) == SOCKET_ERROR) {
-        cerr << "Listen failed." << endl;
-        closesocket(server_fd);
-        WSACleanup();
-        return -1;
-    }
-
-    cout << "Server is running on port " << PORT << endl;
-
-    while (true) {
-        SOCKET new_socket;
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) == INVALID_SOCKET) {
-            cerr << "Accept failed." << endl;
-            closesocket(server_fd);
-            WSACleanup();
-            return -1;
+    try {
+        PortListener listener(8080);
+        while (true) {
+            Connection conn = listener.waitForConnection();
+            thread(handleClient, move(conn)).detach();
         }
-
-        thread client_thread(handleClient, new_socket);
-        client_thread.detach();
+    } catch (const runtime_error& e) {
+        cerr << e.what() << endl;
+        return EXIT_FAILURE;
     }
-
-    closesocket(server_fd);
-    WSACleanup();
-    return 0;
 }
