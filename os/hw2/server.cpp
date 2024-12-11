@@ -76,6 +76,16 @@ void printCapabilityList() {
 // Function to handle client commands
 void handleClient(Connection conn) {
     try {
+        // Step 1: Receive user and group from client
+        string userGroupMessage = conn.rx();  // Receive the combined message
+        size_t delimiterPos = userGroupMessage.find(":");
+
+        // Extract user and group
+        string user = userGroupMessage.substr(0, delimiterPos);
+        string group = userGroupMessage.substr(delimiterPos + 1);
+
+        cout << "Client connected as User: " << user << ", Group: " << group << endl;
+
         while (true) {
             string command = conn.rx();
             if (command.empty()) break;
@@ -85,8 +95,8 @@ void handleClient(Connection conn) {
             string token;
             while (stream >> token) tokens.push_back(token);
 
-            if (tokens[0] == "create" && tokens.size() == 5) {
-                // Command: create <filename> <permissions> <owner> <group>
+            if (tokens[0] == "create" && tokens.size() == 3) {
+                // Command: create <filename> <permissions>
                 lock_guard<mutex> lock(capabilityListMutex);
 
                 // Check if the file already exists
@@ -104,7 +114,7 @@ void handleClient(Connection conn) {
                 file.close();
 
                 // Add file metadata to the capability list
-                FilePermissions newFile = {tokens[3], tokens[4], tokens[2], 0, "N/A"};
+                FilePermissions newFile = {user, group, tokens[2], 0, "N/A"};
                 capabilityList[tokens[1]] = newFile;
 
                 // Update metadata: size and timestamp
@@ -112,11 +122,9 @@ void handleClient(Connection conn) {
                 fileLocks[tokens[1]]; // Initialize file lock
 
                 conn.tx("File created successfully");
-            } else if (tokens[0] == "read" && tokens.size() == 4) {
-                // Command: read <filename> <user> <group>
+            } else if (tokens[0] == "read" && tokens.size() == 2) {
+                // Command: read <filename>
                 string fileName = tokens[1];
-                string user = tokens[2];
-                string group = tokens[3];
 
                 if (!checkPermission(user, group, "read", fileName)) {
                     conn.tx("Permission denied: User lacks read permissions");
@@ -126,11 +134,9 @@ void handleClient(Connection conn) {
                 shared_lock<shared_mutex> lock(fileLocks[fileName]);
                 ifstream file(fileName);
                 if (file.is_open()) {
-                    // Check if the file is empty
                     if (file.peek() == ifstream::traits_type::eof()) {
                         conn.tx("File is empty");
                     } else {
-                        // Read file content
                         stringstream buffer;
                         buffer << file.rdbuf();
                         conn.tx(buffer.str());
@@ -140,15 +146,13 @@ void handleClient(Connection conn) {
                 } else {
                     conn.tx("File not found");
                 }
-            } else if (tokens[0] == "write" && tokens.size() >= 5) {
-                // Command: write <filename> <user> <group> <mode(o/a)> <content>
+            } else if (tokens[0] == "write" && tokens.size() >= 3) {
+                // Command: write <filename> <mode(o/a)> <content>
                 string fileName = tokens[1];
-                string user = tokens[2];
-                string group = tokens[3];
-                string mode = tokens[4]; // 'o' for overwrite, 'a' for append
+                string mode = tokens[2];
                 string content;
-                for (size_t i = 5; i < tokens.size(); ++i) {
-                    if (i > 5) content += " ";
+                for (size_t i = 3; i < tokens.size(); ++i) {
+                    if (i > 3) content += " ";
                     content += tokens[i];
                 }
 
@@ -167,12 +171,10 @@ void handleClient(Connection conn) {
                 } else {
                     conn.tx("File not found");
                 }
-
-            } else if (tokens[0] == "mode" && tokens.size() == 5) {
-                // Command: mode <filename> <new-permissions> <user>
+            } else if (tokens[0] == "mode" && tokens.size() == 3) {
+                // Command: mode <filename> <new-permissions>
                 string fileName = tokens[1];
                 string newPermissions = tokens[2];
-                string user = tokens[3];
 
                 lock_guard<mutex> lock(capabilityListMutex);
                 if (capabilityList.find(fileName) == capabilityList.end()) {
@@ -187,7 +189,6 @@ void handleClient(Connection conn) {
 
                 capabilityList[fileName].permissions = newPermissions;
                 conn.tx("Permissions updated");
-
             } else {
                 conn.tx("Invalid command");
             }
@@ -198,6 +199,8 @@ void handleClient(Connection conn) {
         cerr << "Error handling client: " << e.what() << endl;
     }
 }
+
+
 
 int main() {
     try {

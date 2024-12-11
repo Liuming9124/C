@@ -14,6 +14,17 @@ void sendCommand(Connection& conn, const string& command) {
 int main() {
     try {
         Connection conn("127.0.0.1", 8080);
+
+        string user, group;
+        cout << "Enter your username: ";
+        getline(cin, user);
+        cout << "Enter your group: ";
+        getline(cin, group);
+
+        // Combine user and group into a single message
+        string userGroupMessage = user + ":" + group;
+        conn.tx(userGroupMessage);
+
         cout << "Connected to the server. Type your commands below:" << endl;
 
         string command;
@@ -33,7 +44,6 @@ int main() {
 
             sendCommand(conn, command);
         }
-
     } catch (const exception& e) {
         cerr << e.what() << endl;
         return EXIT_FAILURE;
