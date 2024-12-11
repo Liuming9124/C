@@ -232,7 +232,14 @@ void handleClient(Connection conn) {
 
 int main() {
     try {
-        PortListener listener(8080);
+        int port;
+
+        // 請用戶輸入埠號
+        cout << "Enter port number to listen on: ";
+        cin >> port;
+        // 建立監聽器
+        PortListener listener(port);
+
         while (true) {
             Connection conn = listener.waitForConnection();
             thread(handleClient, move(conn)).detach();

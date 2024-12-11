@@ -39,7 +39,19 @@ void sendCommand(Connection& conn, const string& command) {
 
 int main() {
     try {
-        Connection conn("127.0.0.1", 8080);
+
+        string ip;
+        int port;
+
+        // Ask the user to input IP and port
+        cout << "Enter server IP: ";
+        getline(cin, ip);
+
+        cout << "Enter server port: ";
+        cin >> port;
+        cin.ignore(); // Ignore the newline character after the port input
+
+        Connection conn(ip, port);
 
         string user, group;
         cout << "Enter your username: ";
