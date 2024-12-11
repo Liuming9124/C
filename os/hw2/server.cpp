@@ -169,30 +169,38 @@ void handleClient(Connection conn) {
                     conn.tx("File not found");
                 }
             } else if (tokens[0] == "write" && tokens.size() >= 3) {
-                // Command: write <filename> <mode(o/a)> <content>
                 string fileName = tokens[1];
                 string mode = tokens[2];
-                string content;
-                for (size_t i = 3; i < tokens.size(); ++i) {
-                    if (i > 3) content += " ";
-                    content += tokens[i];
-                }
 
                 if (!checkPermission(user, group, "write", fileName)) {
                     conn.tx("Permission denied: User lacks write permissions");
                     continue;
                 }
 
-                unique_lock<shared_mutex> lock(fileLocks[fileName]);
+                unique_lock<shared_mutex> lock(fileLocks[fileName]); // Exclusive lock for writing
+
+                conn.tx("Editing file. Enter lines and use :wq to save and exit.");
+
                 ios::openmode openMode = (mode == "o") ? ios::trunc : ios::app;
                 ofstream file(fileName, openMode);
-                if (file.is_open()) {
-                    file << content << endl;
-                    conn.tx("File written successfully");
-                    updateFileMetadata(fileName, capabilityList[fileName]);
-                } else {
-                    conn.tx("File not found");
+                if (!file.is_open()) {
+                    conn.tx("Failed to open file for writing");
+                    continue;
                 }
+
+                while (true) {
+                    string line = conn.rx(); // Receive a line from client
+                    cout << "Received line: " << line << endl; // Debug output
+
+                    if (line == ":wq") {
+                        conn.tx("File saved and exited writing mode.");
+                        break; // Exit loop when :wq is received
+                    }
+                    file << line << endl; // Write line to file
+                }
+
+                file.close();
+                updateFileMetadata(fileName, capabilityList[fileName]); // Update file metadata
             } else if (tokens[0] == "mode" && tokens.size() == 3) {
                 // Command: mode <filename> <new-permissions>
                 string fileName = tokens[1];

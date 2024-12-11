@@ -4,11 +4,37 @@
 
 using namespace std;
 
-void sendCommand(Connection& conn, const string& command) {
-    cout << "Sending command: " << command << endl;
+void sendEditCommand(Connection& conn, const string& command) {
+    cout << "Editing file. Type your lines below (use :wq to save and exit):" << endl;
+
+    // Send the write command to server
     conn.tx(command);
     string response = conn.rx();
-    cout << "Server response: " << response << endl;
+    cout << response << endl;
+
+    while (true) {
+        string line;
+        getline(cin, line); // Get user input line-by-line
+        conn.tx(line);      // Send each line to the server
+        if (line == ":wq") {
+            response = conn.rx(); // Receive save confirmation
+            cout << response << endl;
+            break;
+        }
+    }
+}
+
+
+void sendCommand(Connection& conn, const string& command) {
+    // Determine if the command is "write" with a valid mode
+    if (command.substr(0, 5) == "write") {
+        sendEditCommand(conn, command);
+    } else {
+        cout << "Sending command: " << command << endl;
+        conn.tx(command);
+        string response = conn.rx();
+        cout << "Server response: " << response << endl;
+    }
 }
 
 int main() {
