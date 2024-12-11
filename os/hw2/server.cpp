@@ -17,7 +17,7 @@ using namespace std;
 struct FilePermissions {
     string owner;
     string group;
-    string permissions; // rwxrwxrwx (owner, group, others)
+    string permissions; // rwr---
     size_t fileSize;
     string lastModified;
 };
@@ -47,17 +47,39 @@ void updateFileMetadata(const string& fileName, FilePermissions& filePerm) {
 bool checkPermission(const string& user, const string& group, const string& operation, const string& fileName) {
     lock_guard<mutex> lock(capabilityListMutex);
 
+    // Check if file exists in the capability list
     if (capabilityList.find(fileName) == capabilityList.end())
         return false; // File does not exist
 
     const FilePermissions& filePerm = capabilityList[fileName];
-    int index = (user == filePerm.owner) ? 0 : (group == filePerm.group ? 3 : 6);
+    int index;
 
-    if (operation == "read") index += 0;
-    if (operation == "write") index += 1;
+    // Determine which permission set to check
+    if (user == filePerm.owner) {
+        // Owner permissions
+        index = 0;
+    } else if (group == filePerm.group) {
+        // Group permissions
+        index = 2; // Group permissions start at index 2
+    } else {
+        // Others permissions
+        index = 4; // Others permissions start at index 4
+    }
 
+    // Determine the operation type
+    if (operation == "read") {
+        index += 0; // First position is read
+    } else if (operation == "write") {
+        index += 1; // Second position is write
+    } else {
+        return false; // Invalid operation
+    }
+
+    // Check if the permission is allowed
     return filePerm.permissions[index] == 'r' || filePerm.permissions[index] == 'w';
 }
+
+
 
 // Debug function to print the current capability list
 void printCapabilityList() {
@@ -199,8 +221,6 @@ void handleClient(Connection conn) {
         cerr << "Error handling client: " << e.what() << endl;
     }
 }
-
-
 
 int main() {
     try {
