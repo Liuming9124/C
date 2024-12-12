@@ -161,6 +161,7 @@ void handleClient(Connection conn) {
                     } else {
                         stringstream buffer;
                         buffer << file.rdbuf();
+                        this_thread::sleep_for(chrono::seconds(5));
                         conn.tx(buffer.str());
                     }
                     file.close();
