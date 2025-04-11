@@ -15,32 +15,18 @@ public:
         _maxPrint = _lastPrint;
     }
     
-    void clearResult(const string& filename) {
-        ofstream ofs;
-        ofs.open(filename, ofstream::out | ofstream::trunc);
-        ofs.close();
+    void clearResult(const std::string& filename) {
+        std::ofstream ofs(filename, std::ofstream::out | std::ofstream::trunc);
     }
 
     double calculateMean(const std::vector<double>& numbers) {
+        if (numbers.empty()) return 0.0;
         double sum = 0.0;
         for(double num : numbers) {
             sum += num;
         }
         return sum / numbers.size();
     }
-
-    double calculateStandardDeviation(const std::vector<double>& numbers) {
-        double mean = calculateMean(numbers);
-        double variance = 0.0;
-        
-        for(double num : numbers) {
-            variance += (num - mean) * (num - mean);
-        }
-        
-        variance /= numbers.size();
-        return std::sqrt(variance);
-    }
-
 
     template<typename T>
     void NewShowData(vector<vector<T>>& data, int amount){
@@ -62,12 +48,10 @@ public:
         else {
             if (_lastPrint==iter){
                 data[run][iter] = num;
-                // cout << "Run" << run << " iter: " << iter << " num: " << data[run][iter] << " should be : " << num << endl;
             }
             else{
                 for (int i = _lastPrint+1; i <= iter; i++){
                     data[run][i] = num;
-                    // cout << "Run" << run << " iter: " << iter << " num: " << data[run][iter] << " should be : " << num << endl;
                 }
                 _lastPrint = iter;
             }
@@ -82,35 +66,10 @@ public:
         clearResult(fileName);
         // write to file
         ofstream file(fileName, ios_base::app);
+        file << scientific << setprecision(8);
         if (file.is_open()) {
-            vector<double> AvgData(_maxPrint, 0);
-
-            // for (int i=0; i<_maxPrint; i++) {
-            //     for (int j=0; j<_run; j++){
-            //         cout << "Iter " << to_string(i) << " Run " << to_string(j) << " , data: " << to_string(data[j][i]) <<  endl;
-            //     }
-            // }
-
-            // cout << "start print" << endl;
-            // mean avg
-            for (int i = 0; i < _run; i++){
-                // cout << "Run " << to_string(i) << endl;
-                for (int j = 0; j < _maxPrint; j++){
-                    AvgData[j] += data[i][j];
-                    // cout << "iter " << to_string(j) << " : " << to_string(data[i][j]) << endl;
-                }
-            }
-            for(const double& elem : AvgData){
-                file << (double)elem/_run << endl;
-            }
-
-            // std dev
-            if (_run!=1){
-                vector <double> StdDev(_run, 0);
-                for (int i=0; i<_run; i++){
-                    StdDev[i] = (double)data[i][_maxPrint-1];
-                }
-                file << "Run " << _run << ", std dev: " << (double)calculateStandardDeviation(StdDev) << endl;
+            for (int i=0; i<_run; i++){
+                file << data[i][0] << endl;
             }
         }
         else {
@@ -118,35 +77,17 @@ public:
         }
     }
 
-    void NewShowDataInt(int amount){
-        NewShowData(_dataInt, amount);
-    }
-
-    void NewShowDataDouble(int amount){
-        NewShowData(_dataDouble, amount);
-    }
-
-    void SetDataInt(int run, long int num, int iter){
-        SetData(run, _dataInt, num, iter);
-    }
-
-    void SetDataDouble(int run, long double num, int iter){
-        SetData(run, _dataDouble, num, iter);
-    }
-
-    void PrintToFileInt(string fileName, int iter){
-        PrintToFile(fileName, _dataInt, iter);
-    }
-
-    void PrintToFileDouble(string fileName, int iter){
-        PrintToFile(fileName, _dataDouble, iter);
-    }
+    void NewShowDataInt(int amount)    { NewShowData(_dataInt, amount); }
+    void NewShowDataDouble(int amount) { NewShowData(_dataDouble, amount); }
+    void SetDataInt(int run, long int num, int iter)       { SetData(run, _dataInt, num, iter); }
+    void SetDataDouble(int run, long double num, int iter) { SetData(run, _dataDouble, num, iter); }
+    void PrintToFileInt(const std::string& fileName, int iter)       { PrintToFile(fileName, _dataInt, iter); }
+    void PrintToFileDouble(const std::string& fileName, int iter)    { PrintToFile(fileName, _dataDouble, iter); }
 
     void init() {
         _lastPrint = -1;
         _maxPrint = _lastPrint;
     }
-
 
 private:
     string _folder;

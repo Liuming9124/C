@@ -15,10 +15,11 @@ int main(int argc, char *argv[]){
     ss >> Run;
     ss >> Func;
     ss >> Pop;
-    ss >> Fess;
     ss >> Dim;
     ss >> Cr;
     ss >> F;
+    
+    Fess = Dim * 10000;
 
     De de;
     de.RunALG( Run, Func, Pop, Fess, Dim, Cr,  F);

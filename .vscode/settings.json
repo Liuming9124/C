@@ -48,7 +48,14 @@
     "chrono": "cpp",
     "ctime": "cpp",
     "ratio": "cpp",
-    "queue": "cpp"
+    "queue": "cpp",
+    "condition_variable": "cpp",
+    "optional": "cpp",
+    "string_view": "cpp",
+    "iomanip": "cpp",
+    "mutex": "cpp",
+    "shared_mutex": "cpp",
+    "thread": "cpp"
   },
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",

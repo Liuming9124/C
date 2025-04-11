@@ -16,7 +16,6 @@ public:
         double _fitness;
     } _Particle;
 
-
     void RunALG(int, int, int, int, int, double, double);
 
 private:
@@ -55,11 +54,41 @@ void De::RunALG(int Run, int Func, int Pop, int Fess, int Dim, double Cr, double
     _Cr = Cr;
     _F = F;
 
-    show = AlgPrint(_Run, "./result", "de");
-    show.NewShowDataDouble(_Iter);
+    cout << scientific << setprecision(8);
 
-    // problem.setStrategy(Func);
+    show = AlgPrint(_Run, "./result", "de");
+    show.NewShowDataDouble(1);
+
     set_search_bound(&_upperBound, &_lowerBound, Func);
+    string FileName;
+    switch (Func)
+    {
+        case 1:
+            FileName = "Ackley";
+            break;
+        case 2:
+            FileName = "Rastrigin";
+            break;
+
+        case 3:
+            FileName = "HappyCat";
+            break;
+
+        case 4:
+            FileName = "Rosenbrock";
+            break;
+
+        case 5:
+            FileName = "Zakharov";
+            break;
+
+        case 6:
+            FileName = "Michalewicz";
+            break;
+        default:
+            printf("Invalid function number");
+            break;
+    }
 
     while (_Run--)
     {
@@ -68,7 +97,7 @@ void De::RunALG(int Run, int Func, int Pop, int Fess, int Dim, double Cr, double
         Evaluation();
         Reset();
     }
-    show.PrintToFileDouble("./result/result" + to_string(Func) + ".txt", _Iter);
+    show.PrintToFileDouble("./result/" + FileName + to_string(_Dim) + "D.txt", _Iter);
     cout << "end" << endl;
 }
 
@@ -88,13 +117,13 @@ void De::Init()
         {
             _Swarm[i]._position[j] = tool.rand_double(_lowerBound, _upperBound);
         }
-        // _Swarm[i]._fitness = problem.executeStrategy(_Swarm[i]._position, _Dim);
         _Swarm[i]._fitness = calculate_test_function(&_Swarm[i]._position[0], _Dim, _Func);
     }
 }
 
 void De::Evaluation()
 {
+    double best = 0.0;
     for (int iter = 0; iter < _Iter; iter++)
     {
         for (int i = 0; i < _Pop; i++)
@@ -136,14 +165,15 @@ void De::Evaluation()
             }
         }
         // show data
-        double best = _Swarm[0]._fitness;
+        best = _Swarm[0]._fitness;
         for (int p = 1; p < _Pop; p++)
         {
             if (best > _Swarm[p]._fitness)
                 best = _Swarm[p]._fitness;
         }
-        show.SetDataDouble(_Run, best, iter);
     }
+    show.SetDataDouble(_Run, best, 0);
+    cout << best << endl;
 }
 
 void De::Reset()
