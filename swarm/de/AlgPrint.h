@@ -68,13 +68,40 @@ public:
         ofstream file(fileName, ios_base::app);
         file << scientific << setprecision(8);
         if (file.is_open()) {
+            double mean = 0.0;
+            for (int i=0; i<_run; i++){
+                mean += data[i][0];
+            }
+            mean /= _run;
             for (int i=0; i<_run; i++){
                 file << data[i][0] << endl;
+            }
+            
+            // std dev
+            if (_run!=1){
+                vector <double> StdDev(_run, 0);
+                for (int i=0; i<_run; i++){
+                    StdDev[i] = (double)data[i][0];
+                }
+                file << "Run " << _run << ", std dev: " << (double)calculateStandardDeviation(StdDev) << ", mean: " << mean << endl;
             }
         }
         else {
             cerr << "Unable to open file!\n";
         }
+    }
+
+
+    double calculateStandardDeviation(const std::vector<double>& numbers) {
+        double mean = calculateMean(numbers);
+        double variance = 0.0;
+        
+        for(double num : numbers) {
+            variance += (num - mean) * (num - mean);
+        }
+        
+        variance /= numbers.size();
+        return std::sqrt(variance);
     }
 
     void NewShowDataInt(int amount)    { NewShowData(_dataInt, amount); }
