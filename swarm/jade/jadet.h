@@ -1,46 +1,42 @@
-#ifndef LSHADE_H
-#define LSHADE_H
+#ifndef JADET_H
+#define JADET_H
 
-#include <vector>
-#include <algorithm>
 #include "AlgPrint.h"
 #include "Tool.h"
+#include <queue>
+#include <vector>
+#include <random>
+#include <algorithm>
+#include <cfloat>
 #include "test_function.h"
 using namespace std;
 
-class Lshade
+class Jade
 {
 public:
-    void RunALG(int, int, int, int, int, int, int, int);
+
+    void RunALG(int, int, int, int, int, int, double, double);
 
 private:
     int _Run;
     int _NP;
+    int _Gen;
     int _Arch;
-    int _Dim;
-    int _Fess;
-    int _H;
-    int _NPmin;
-    int _NPnow;
-    int _k;
-    int _FessNow;
-    int _Func;
+    double _mCR;
+    double _mF;
     vector<double> _SF, _SCR;
+    int _Dim;
+    int _Func;
+    double _P;
+    double _C;
+    int _nFess, _mFess;
     double _upperBound, _lowerBound;
     double _Best;
-
-
-    typedef struct History
-    {
-        double _MCR, _MF;
-        bool EndFlag;
-    } _History;
-    vector<_History> _HS;
 
     typedef struct Particle
     {
         vector<double> _position;
-        double _inCR, _inF, _inP;
+        double _inCR, _inF;
         double _fitness;
         int _index;
     } _Particle;
@@ -58,26 +54,26 @@ private:
     AlgPrint show;
     Tool tool;
 };
-void Lshade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, int H, int NPmin)
+
+void Jade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, double P, double C)
 {
     _Run = Run;
-    _Func = Func;
     _NP = NP;
+    _Func = Func;
+    _mFess = Fess;
     _Dim = Dim;
+    _P = P;
+    _C = C;
     _Arch = 0;
-    _Fess = Fess;
-    _H = H;
-    _NPmin = NPmin;
-    _NPnow = _NP;
-    if (Arch != 0)
-        _Arch = Arch;
-    
-    show = AlgPrint(_Run, "./result", "Lshade");
+    if (Arch!=0){
+        _Arch = _NP;
+    }
+    show = AlgPrint(_Run, "./result", "jade");
     show.NewShowDataDouble(1);
 
-    set_search_bound(&_upperBound, &_lowerBound, Func);
+    set_search_bound(&_upperBound, &_lowerBound, _Func);
     string FileName;
-    switch (Func)
+    switch (_Func)
     {
         case 1:
             FileName = "Ackley";
@@ -106,6 +102,7 @@ void Lshade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, int 
             break;
     }
 
+
     while (_Run--)
     {
         cout << "-------------------Run" << Run - _Run << "---------------------" << endl;
@@ -117,110 +114,82 @@ void Lshade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, int 
     cout << "end" << endl;
 }
 
-void Lshade::Init()
+void Jade::Init()
 {
     show.init();
-    _A.assign(0, _Particle());
-    _X.assign(_NP, _Particle());
-    _k = 0;
-    _HS.assign(_H, _History());
-    _FessNow = 0;
+    _mCR = 0.5;
+    _mF = 0.5;
+    _A.resize(0);
+    _X.resize(_NP);
     _Best = DBL_MAX;
-    for (int i = 0; i < _H; i++)
-    {
-        _HS[i]._MCR = 0.1;
-        _HS[i]._MF = 0.1;
-        _HS[i].EndFlag = 0;
-    }
+    _nFess = 0;
 
     int dim = _Dim;
     // random init _X
     for (int i = 0; i < _NP; i++)
     {
-        _X[i]._position.assign(dim, 0);
+        _X[i]._position.resize(dim);
         for (int j = 0; j < dim; j++)
         {
-            _X[i]._position[j] = tool.rand_double(_lowerBound, _upperBound);
+            _X[i]._position[j] = tool.rand_double( _lowerBound, _upperBound);
         }
         _X[i]._fitness = calculate_test_function(&_X[i]._position[0], _Dim, _Func);
+        _nFess++;
         _X[i]._index = i;
         _X[i]._inCR = _X[i]._inF = 0;
-
         
         if (_X[i]._fitness < _Best)
             _Best = _X[i]._fitness;
-
     }
     // init var
-    _U._position.assign(dim, 0);
-    _V._position.assign(dim, 0);
+    _U._position.resize(dim);
+    _V._position.resize(dim);
     _U._fitness = _V._fitness = DBL_MAX;
+    _SCR.resize(_NP);
+    _SF.resize(_NP);
 }
 
-void Lshade::Evaluation()
+void Jade::Evaluation()
 {
-    while (_FessNow < _Fess)
+    while(_nFess < _mFess)
     {
-        // check in Evaluation times
-        if (_FessNow+_NPnow > _Fess)
-            break;
-
-        vector<double> deltaF; // to store fitness to calculate mean
-        deltaF.clear();
         _SCR.clear();
         _SF.clear();
-        for (int i = 0; i < _NPnow; i++)
+        for (int i = 0; i < _NP; i++)
         {
-            // init CR & F & P
-            int index = tool.rand_int(0, _H - 1);
-            if (_HS[index].EndFlag) // new: EndFlag For CRi
-            {
-                _X[i]._inCR = 0;
+            // init CR & F
+            _X[i]._inCR = tool.rand_normal(_mCR, 0.1);
+            if (_X[i]._inCR>1){
+                _X[i]._inCR = 1;
             }
-            else
-            {
-                _X[i]._inCR = tool.rand_normal(_HS[index]._MCR, 0.1);
-                if (_X[i]._inCR > 1)
-                {
-                    _X[i]._inCR = 1;
-                }
-                else if (_X[i]._inCR < 0)
-                {
-                    _X[i]._inCR = 0;
-                }
+            else if (_X[i]._inCR<0){
+                _X[i]._inCR = 0;
             }
             do
             {
-                _X[i]._inF = tool.rand_cauchy(_HS[index]._MF, 0.1);
-                if (_X[i]._inF >= 1)
+                _X[i]._inF = tool.rand_cauchy(_mF, 0.1);
+                if (_X[i]._inF >=1)
                 {
                     _X[i]._inF = 1;
                 }
             } while (_X[i]._inF <= 0);
             
-            if (2.0/_NPnow > 0.2){
-                _X[i]._inP = 0.2;
-            }
-            else {
-                _X[i]._inP = tool.rand_double(2.0/_NPnow, 0.2);
-            }
-            
             // Random choose three place to mutation
             int best, r1, r2, flag = 0;
-            best = selectTopPBest(_X, _X[i]._inP);
+            best = selectTopPBest(_X, _P);
             do
             {
-                r1 = tool.rand_int(0, _NPnow - 1);
+                r1 = tool.rand_int(0, _NP - 1);
             } while (r1 == i);
             do
             {
-                r2 = tool.rand_int(0, _NPnow + _A.size() - 1);
-                if (r2 >= _NPnow)
+                r2 = tool.rand_int(0, _NP + _A.size() - 1);
+                if (r2 >= _NP)
                 {
                     bool checkFlag = 0;
                     for (int j = 0; j < _Dim; j++)
                     {
-                        if (_A[r2 - _NPnow]._position[j] != _X[i]._position[j])
+                        if (_A[r2 - _NP]._position[j] != _X[i]._position[j])
                         {
                             checkFlag = 1;
                             break;
@@ -228,7 +197,7 @@ void Lshade::Evaluation()
                     }
                     for (int j = 0; j < _Dim; j++)
                     {
-                        if (_A[r2 - _NPnow]._position[j] != _X[r1]._position[j])
+                        if (_A[r2 - _NP]._position[j] != _X[r1]._position[j])
                         {
                             checkFlag = 1;
                             break;
@@ -240,7 +209,7 @@ void Lshade::Evaluation()
                     }
                     else
                     {
-                        r2 -= _NPnow;
+                        r2 -= _NP;
                         flag = 1;
                         break;
                     }
@@ -261,6 +230,7 @@ void Lshade::Evaluation()
                 }
                 CheckBorder(_V, _X[i]);
             }
+            
             // crossover
             int jrand = tool.rand_int(0, _Dim - 1);
             for (int j = 0; j < _Dim; j++)
@@ -274,81 +244,20 @@ void Lshade::Evaluation()
                     _U._position[j] = _X[i]._position[j];
                 }
             }
+
             // Selection
             _U._fitness = calculate_test_function(&_U._position[0], _Dim, _Func);
-            if (_X[i]._fitness >= _U._fitness)
+            _nFess++;
+            if (_X[i]._fitness > _U._fitness)
             {
-                if (_X[i]._fitness > _U._fitness)
-                {
-                    _A.push_back(_X[i]);
-                    _SCR.push_back(_X[i]._inCR);
-                    _SF.push_back(_X[i]._inF);
-                    deltaF.push_back(_X[i]._fitness - _U._fitness);
-                }
+                _A.push_back(_X[i]);
                 _X[i]._position = _U._position;
                 _X[i]._fitness = _U._fitness;
-                if (_X[i]._fitness < _Best)
-                    _Best = _X[i]._fitness;
+                _SCR.push_back(_X[i]._inCR);
+                _SF.push_back(_X[i]._inF);
             }
         }
 
-        // Update HS
-        if (_SCR.size() != 0 && _SF.size() != 0)
-        {
-            // prepare param
-            double mCR, mF, WKdenominator, numerator, denominator;
-            mCR = mF = WKdenominator = numerator = denominator = 0;
-
-            for (int t = 0; t < _SCR.size(); t++)
-            {
-                WKdenominator += deltaF[t];
-            }
-
-            // Update MCR
-            double maxSCR = *max_element(_SCR.begin(), _SCR.end());
-            if (_HS[_k].EndFlag || maxSCR == 0)
-            {
-                _HS[_k].EndFlag = 1;
-            }
-            else
-            {
-                for (int t = 0; t < _SCR.size(); t++)
-                {
-                    // mean weight Scr
-                    mCR += (deltaF[t] / WKdenominator) * _SCR[t];
-                }
-                _HS[_k]._MCR = mCR;
-            }
-
-            // Update MF
-            for (int t = 0; t < _SCR.size(); t++)
-            {
-                // Lehmer mean
-                numerator += (deltaF[t] / WKdenominator) * _SF[t] * _SF[t];
-                denominator += (deltaF[t] / WKdenominator) * _SF[t];
-            }
-            mF = numerator / denominator;
-            _HS[_k]._MF = mF;
-
-            _k++;
-            if (_k == _H)
-                _k = 0;
-        }
-
-        // new: Population Reduction, Update NPnow
-        _FessNow += _NPnow;
-        int _NPnext = (int) round((((_NPmin - _NP) / (double)_Fess) *  (double)_FessNow) + _NP );
-
-        if (_NPnext != _NPnow){
-            if (_NPnext < _NPmin)
-                _NPnext = _NPmin;
-            _NPnow = _NPnext;
-            _Arch = _NPnow;
-            sort(_X.begin(), _X.end(), compareFitness);
-            _X.assign(_X.begin(), _X.begin() + _NPnow);
-        }
-
-        // Resize Archive size
         while (_A.size() > _Arch)
         {
             // randomly remove one element from A
@@ -356,37 +265,48 @@ void Lshade::Evaluation()
             _A.erase(_A.begin() + remove);
         }
 
+        if (_SCR.size() != 0 && _SF.size() != 0){
+            // mean Scr
+            double meanScr = 0;
+            for (int t = 0; t < _SCR.size(); t++)
+            {
+                meanScr += _SCR[t];
+            }
+            meanScr /= _SCR.size();
+
+            // Lehmer mean
+            double meanF, numerator, denominator;
+            meanF = numerator = denominator = 0;
+            for (int t = 0; t < _SF.size(); t++) {
+                numerator += _SF[t] * _SF[t];
+                denominator += _SF[t];
+            }
+            meanF = numerator / denominator;
+
+            // update mCR & mF
+            _mCR = (1 - _C) * _mCR + _C * meanScr;
+            _mF = (1 - _C) * _mF + _C * meanF;
+        }
+        
         // show data
-        for (int p = 1; p < _NPnow; p++)
-        {
+        for (int p=1; p<_NP; p++){
             if (_Best > _X[p]._fitness)
                 _Best = _X[p]._fitness;
         }
-        
-        if (_FessNow+_NPnow <= _Fess)
-            show.SetDataDouble(_Run, _Best, 0);
-        
-        // cout << "_NPnow: " << _NPnow << " _FessNow: " << _FessNow << " Best: " << _Best << endl;
+        show.SetDataDouble(_Run, _Best, 0);;
+        cout << "nfess: " << _nFess << ", Best: " << _Best << endl;
     }
 }
 
-void Lshade::Reset()
+void Jade::Reset()
 {
-    _Best = DBL_MAX;
-    _FessNow = 0;
-    _NPnow = _NP;
-    _k = 0;
-
     _X.clear();
     _A.clear();
-    _HS.clear();
-    _SF.clear();
-    _SCR.clear();
     _U._position.clear();
     _V._position.clear();
 }
 
-void Lshade::CheckBorder(_Particle &check, _Particle &old)
+void Jade::CheckBorder(_Particle &check, _Particle &old)
 {
     for (int i = 0; i < _Dim; i++)
     {
@@ -401,19 +321,18 @@ void Lshade::CheckBorder(_Particle &check, _Particle &old)
     }
 }
 
-bool Lshade::compareFitness(const _Particle &a, const _Particle &b)
+bool Jade::compareFitness(const _Particle &a, const _Particle &b)
 {
     return a._fitness < b._fitness;
 }
 
-int Lshade::selectTopPBest(vector<_Particle> X, double p)
+int Jade::selectTopPBest(vector<_Particle> X, double p)
 {
     vector<_Particle> tmp = X;
     sort(tmp.begin(), tmp.end(), compareFitness);
     int place;
-    place = p * _NPnow;
+    place = p * _NP;
     place = tool.rand_int(0, place);
-
     return tmp[place]._index;
 }
 
