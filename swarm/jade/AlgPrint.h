@@ -62,8 +62,8 @@ public:
 
     template<typename T>
     void PrintToFile(string fileName, vector<vector<T>>& data, int iter){
-        // // clear old file
-        // clearResult(fileName);
+        // clear old file
+        clearResult(fileName);
         // write to file
         ofstream file(fileName, ios_base::app);
         file << scientific << setprecision(8);

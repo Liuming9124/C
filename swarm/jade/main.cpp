@@ -1,6 +1,6 @@
-// #include "jade.h"
+#include "jade.h"
 // #include "jadet.h"
-#include "lshade.h"
+// #include "lshade.h"
 #include <iostream>
 #include <sstream>
 
@@ -24,10 +24,8 @@ int main(int argc, char *argv[])
 
     Fess = Dim * 10000;
 
-
-    // for (int i=0; i<Run; i++){
-        Jade jade;
-        jade.RunALG(Run, Func, NP, Fess, Dim, Arch, P, C);
-    // }
+    Jade jade;
+    jade.RunALG(Run, Func, NP, Fess, Dim, Arch, P, C);
+        
     return 0;
 }

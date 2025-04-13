@@ -55,7 +55,8 @@
     "iomanip": "cpp",
     "mutex": "cpp",
     "shared_mutex": "cpp",
-    "thread": "cpp"
+    "thread": "cpp",
+    "cfloat": "cpp"
   },
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",
