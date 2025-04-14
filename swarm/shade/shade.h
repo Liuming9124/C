@@ -1,5 +1,5 @@
-#ifndef LSHADE_H
-#define LSHADE_H
+#ifndef SHADE_H
+#define SHADE_H
 
 #include <vector>
 #include <algorithm>
@@ -8,32 +8,14 @@
 #include "test_function.h"
 using namespace std;
 
-class Lshade
+class Shade
 {
 public:
-    void RunALG(int, int, int, int, int, int, int, int);
-
-private:
-    int _Run;
-    int _NP;
-    int _Arch;
-    int _Dim;
-    int _Fess;
-    int _H;
-    int _NPmin;
-    int _NPnow;
-    int _k;
-    int _FessNow;
-    int _Func;
-    vector<double> _SF, _SCR;
-    double _upperBound, _lowerBound;
-    double _Best;
-
-
+    void RunALG(int, int, int, int, int, int, int);
+    
     typedef struct History
     {
         double _MCR, _MF;
-        bool EndFlag;
     } _History;
     vector<_History> _HS;
 
@@ -45,6 +27,21 @@ private:
         int _index;
     } _Particle;
     _Particle _U, _V;
+
+private:
+    int _Run;
+    int _NP;
+    int _FESS;
+    int _Arch;
+    int _Dim;
+    int _H;
+    int _k;
+    int _FessNow;
+    int _Func;
+    vector<double> _SF, _SCR;
+    double _upperBound, _lowerBound;
+    double _Best;
+
     vector<_Particle> _X, _A;
 
     void Init();
@@ -58,26 +55,24 @@ private:
     AlgPrint show;
     Tool tool;
 };
-void Lshade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, int H, int NPmin)
+void Shade::RunALG(int Run, int Func, int NP, int FESS, int Dim, int Arch, int H)
 {
     _Run = Run;
-    _Func = Func;
     _NP = NP;
     _Dim = Dim;
     _Arch = 0;
-    _Fess = Fess;
+    _FESS = FESS;
+    _Func = Func;
     _H = H;
-    _NPmin = NPmin;
-    _NPnow = _NP;
-    if (Arch != 0)
-        _Arch = Arch;
+    if (Arch!=0)
+        _Arch = _NP;
     
-    show = AlgPrint(_Run, "./result", "Lshade");
+    show = AlgPrint(_Run, "./result", "Shade");
     show.NewShowDataDouble(1);
 
-    set_search_bound(&_upperBound, &_lowerBound, Func);
+    set_search_bound(&_upperBound, &_lowerBound, _Func);
     string FileName;
-    switch (Func)
+    switch (_Func)
     {
         case 1:
             FileName = "Ackley";
@@ -117,7 +112,7 @@ void Lshade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, int 
     cout << "end" << endl;
 }
 
-void Lshade::Init()
+void Shade::Init()
 {
     show.init();
     _A.assign(0, _Particle());
@@ -128,16 +123,15 @@ void Lshade::Init()
     _Best = DBL_MAX;
     for (int i = 0; i < _H; i++)
     {
-        _HS[i]._MCR = 0.1;
-        _HS[i]._MF = 0.1;
-        _HS[i].EndFlag = 0;
+        _HS[i]._MCR = 0.5;
+        _HS[i]._MF = 0.5;
     }
 
     int dim = _Dim;
     // random init _X
     for (int i = 0; i < _NP; i++)
     {
-        _X[i]._position.assign(dim, 0);
+        _X[i]._position.assign(dim,0.0);
         for (int j = 0; j < dim; j++)
         {
             _X[i]._position[j] = tool.rand_double(_lowerBound, _upperBound);
@@ -150,7 +144,6 @@ void Lshade::Init()
         
         if (_X[i]._fitness < _Best)
             _Best = _X[i]._fitness;
-
     }
     // init var
     _U._position.assign(dim, 0);
@@ -158,70 +151,60 @@ void Lshade::Init()
     _U._fitness = _V._fitness = DBL_MAX;
 }
 
-void Lshade::Evaluation()
+void Shade::Evaluation()
 {
-    while (_FessNow < _Fess)
+    while (_FessNow < _FESS)
     {
-        // check in Evaluation times
-        if (_FessNow+_NPnow > _Fess)
-            break;
-
         vector<double> deltaF; // to store fitness to calculate mean
         deltaF.clear();
         _SCR.clear();
         _SF.clear();
-        for (int i = 0; i < _NPnow; i++)
+        for (int i = 0; i < _NP; i++)
         {
             // init CR & F & P
             int index = tool.rand_int(0, _H - 1);
-            if (_HS[index].EndFlag) // new: EndFlag For CRi
-            {
-                _X[i]._inCR = 0;
+
+            _X[i]._inCR = tool.rand_normal(_HS[index]._MCR, 0.1);
+            if (_X[i]._inCR>1){
+                _X[i]._inCR = 1;
             }
-            else
-            {
-                _X[i]._inCR = tool.rand_normal(_HS[index]._MCR, 0.1);
-                if (_X[i]._inCR > 1)
-                {
-                    _X[i]._inCR = 1;
-                }
-                else if (_X[i]._inCR < 0)
-                {
-                    _X[i]._inCR = 0;
-                }
+            else if (_X[i]._inCR<0){
+                _X[i]._inCR = 0;
             }
             do
             {
                 _X[i]._inF = tool.rand_cauchy(_HS[index]._MF, 0.1);
-                if (_X[i]._inF >= 1)
+                if (_X[i]._inF >=1)
                 {
                     _X[i]._inF = 1;
                 }
             } while (_X[i]._inF <= 0);
-            
-            if (2.0/_NPnow > 0.2){
+
+            if (2.0 / _NP > 0.2)
+            {
                 _X[i]._inP = 0.2;
             }
-            else {
-                _X[i]._inP = tool.rand_double(2.0/_NPnow, 0.2);
+            else
+            {
+                _X[i]._inP = tool.rand_double(2.0 / _NP, 0.2);
             }
-            
+
             // Random choose three place to mutation
             int best, r1, r2, flag = 0;
             best = selectTopPBest(_X, _X[i]._inP);
             do
             {
-                r1 = tool.rand_int(0, _NPnow - 1);
+                r1 = tool.rand_int(0, _NP - 1);
             } while (r1 == i);
             do
             {
-                r2 = tool.rand_int(0, _NPnow + _A.size() - 1);
-                if (r2 >= _NPnow)
+                r2 = tool.rand_int(0, _NP + _A.size() - 1);
+                if (r2 >= _NP)
                 {
                     bool checkFlag = 0;
                     for (int j = 0; j < _Dim; j++)
                     {
-                        if (_A[r2 - _NPnow]._position[j] != _X[i]._position[j])
+                        if (_A[r2 - _NP]._position[j] != _X[i]._position[j])
                         {
                             checkFlag = 1;
                             break;
@@ -229,7 +212,7 @@ void Lshade::Evaluation()
                     }
                     for (int j = 0; j < _Dim; j++)
                     {
-                        if (_A[r2 - _NPnow]._position[j] != _X[r1]._position[j])
+                        if (_A[r2 - _NP]._position[j] != _X[r1]._position[j])
                         {
                             checkFlag = 1;
                             break;
@@ -241,12 +224,39 @@ void Lshade::Evaluation()
                     }
                     else
                     {
-                        r2 -= _NPnow;
+                        r2 -= _NP;
                         flag = 1;
                         break;
                     }
                 }
             } while (r2 == i || r2 == r1);
+
+            // check if r1 and r2 are valid
+            if (r1 >= _NP && r2 >= _NP)
+            {
+                flag = 1;
+                r1 -= _NP;
+                r2 -= _NP;
+            }
+            else if (r1 >= _NP)
+            {
+                flag = 1;
+                r1 -= _NP;
+            }
+            else if (r2 >= _NP)
+            {
+                flag = 1;
+                r2 -= _NP;
+            }
+
+            if (flag == 0)
+            {
+                // check if r1 and r2 are different
+                while (r1 == r2)
+                {
+                    r2 = tool.rand_int(0, _NP - 1);
+                }
+            }
 
             // mutation & check boundary
             for (int j = 0; j < _Dim; j++)
@@ -280,8 +290,7 @@ void Lshade::Evaluation()
             _FessNow++;
             if (_X[i]._fitness >= _U._fitness)
             {
-                if (_X[i]._fitness > _U._fitness)
-                {
+                if (_X[i]._fitness > _U._fitness){
                     _A.push_back(_X[i]);
                     _SCR.push_back(_X[i]._inCR);
                     _SF.push_back(_X[i]._inF);
@@ -289,106 +298,69 @@ void Lshade::Evaluation()
                 }
                 _X[i]._position = _U._position;
                 _X[i]._fitness = _U._fitness;
-                if (_X[i]._fitness < _Best)
-                    _Best = _X[i]._fitness;
             }
         }
 
-        // Update HS
-        if (_SCR.size() != 0 && _SF.size() != 0)
+        while (_A.size() > _Arch)
         {
-            // prepare param
-            double mCR, mF, WKdenominator, numerator, denominator;
-            mCR = mF = WKdenominator = numerator = denominator = 0;
+            // randomly remove one element from A
+            if (_A.size()>=1) {
+                int remove = tool.rand_int(0, _A.size() - 1);
+                _A.erase(_A.begin() + remove);
+            }
+        }
 
+        if (_SCR.size() != 0 && _SF.size() != 0){
+            // prepare param
+            double WKdenominator = 0;
             for (int t = 0; t < _SCR.size(); t++)
             {
                 WKdenominator += deltaF[t];
             }
 
-            // Update MCR
-            double maxSCR = *max_element(_SCR.begin(), _SCR.end());
-            if (_HS[_k].EndFlag || maxSCR == 0)
-            {
-                _HS[_k].EndFlag = 1;
-            }
-            else
-            {
-                for (int t = 0; t < _SCR.size(); t++)
-                {
-                    // mean weight Scr
-                    mCR += (deltaF[t] / WKdenominator) * _SCR[t];
-                }
-                _HS[_k]._MCR = mCR;
-            }
-
-            // Update MF
+            double mCR, mF, numerator, denominator;
+            mCR = mF = numerator = denominator = 0;
             for (int t = 0; t < _SCR.size(); t++)
             {
+                // mean weight Scr
+                mCR += (deltaF[t] / WKdenominator) * _SCR[t];
                 // Lehmer mean
                 numerator += (deltaF[t] / WKdenominator) * _SF[t] * _SF[t];
                 denominator += (deltaF[t] / WKdenominator) * _SF[t];
             }
             mF = numerator / denominator;
+            
+            _HS[_k]._MCR = mCR;
             _HS[_k]._MF = mF;
 
             _k++;
             if (_k == _H)
                 _k = 0;
+
         }
-
-        // new: Population Reduction, Update NPnow
-        _FessNow += _NPnow;
-        int _NPnext = (int) round((((_NPmin - _NP) / (double)_Fess) *  (double)_FessNow) + _NP );
-
-        if (_NPnext != _NPnow){
-            if (_NPnext < _NPmin)
-                _NPnext = _NPmin;
-            _NPnow = _NPnext;
-            _Arch = _NPnow;
-            sort(_X.begin(), _X.end(), compareFitness);
-            _X.assign(_X.begin(), _X.begin() + _NPnow);
-        }
-
-        // Resize Archive size
-        while (_A.size() > _Arch)
-        {
-            // randomly remove one element from A
-            int remove = tool.rand_int(0, _A.size() - 1);
-            _A.erase(_A.begin() + remove);
-        }
-
+        
         // show data
-        for (int p = 1; p < _NPnow; p++)
+        for (int p = 1; p < _NP; p++)
         {
             if (_Best > _X[p]._fitness)
                 _Best = _X[p]._fitness;
         }
-        
-        if (_FessNow+_NPnow <= _Fess)
-            show.SetDataDouble(_Run, _Best, 0);
-        
-        // cout << "_NPnow: " << _NPnow << " _FessNow: " << _FessNow << " Best: " << _Best << endl;
+        // cout << "Best: " << _Best << endl;
     }
+    show.SetDataDouble(_Run, _Best, 0);
 }
 
-void Lshade::Reset()
+void Shade::Reset()
 {
     _Best = DBL_MAX;
     _FessNow = 0;
-    _NPnow = _NP;
-    _k = 0;
-
     _X.clear();
     _A.clear();
-    _HS.clear();
-    _SF.clear();
-    _SCR.clear();
     _U._position.clear();
     _V._position.clear();
 }
 
-void Lshade::CheckBorder(_Particle &check, _Particle &old)
+void Shade::CheckBorder(_Particle &check, _Particle &old)
 {
     for (int i = 0; i < _Dim; i++)
     {
@@ -403,19 +375,18 @@ void Lshade::CheckBorder(_Particle &check, _Particle &old)
     }
 }
 
-bool Lshade::compareFitness(const _Particle &a, const _Particle &b)
+bool Shade::compareFitness(const _Particle &a, const _Particle &b)
 {
     return a._fitness < b._fitness;
 }
 
-int Lshade::selectTopPBest(vector<_Particle> X, double p)
+int Shade::selectTopPBest(vector<_Particle> X, double p)
 {
     vector<_Particle> tmp = X;
     sort(tmp.begin(), tmp.end(), compareFitness);
     int place;
-    place = p * _NPnow;
+    place = p * _NP;
     place = tool.rand_int(0, place);
-
     return tmp[place]._index;
 }
 

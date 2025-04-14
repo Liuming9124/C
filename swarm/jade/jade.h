@@ -172,51 +172,6 @@ void Jade::Evaluation()
                 }
             } while (_X[i]._inF <= 0);
             
-            // // Random choose three place to mutation
-            // int best, r1, r2, flag = 0;
-            // best = selectTopPBest(_X, _P);
-            // do
-            // {
-            //     r1 = tool.rand_int(0, _NP - 1);
-            // } while (r1 == i);
-            // do
-            // {
-            //     r2 = tool.rand_int(0, _NP + _A.size() - 1);
-            //     if (r2 >= _NP)
-            //     {
-            //         bool checkFlag = 0;
-            //         for (int j = 0; j < _Dim; j++)
-            //         {
-            //             if (_A[r2 - _NP]._position[j] != _X[i]._position[j])
-            //             {
-            //                 checkFlag = 1;
-            //                 break;
-            //             }
-            //         }
-            //         for (int j = 0; j < _Dim; j++)
-            //         {
-            //             if (_A[r2 - _NP]._position[j] != _X[r1]._position[j])
-            //             {
-            //                 checkFlag = 1;
-            //                 break;
-            //             }
-            //         }
-            //         if (checkFlag == 0)
-            //         {
-            //             continue;
-            //         }
-            //         else
-            //         {
-            //             r2 -= _NP;
-            //             flag = 1;
-            //             break;
-            //         }
-            //     }
-            // } while (r2 == i || r2 == r1);
-
-
-
-            
             // Randomly choose three individuals for mutation
             int best, r1, r2, flag;
             best = selectTopPBest(_X, _P);
@@ -260,9 +215,6 @@ void Jade::Evaluation()
                     break;
                 }
             }
-
-
-
 
             // mutation & check boundary
             for (int j = 0; j < _Dim; j++)
