@@ -1,6 +1,4 @@
 #include "jade.h"
-// #include "jadet.h"
-// #include "lshade.h"
 #include <iostream>
 #include <sstream>
 
