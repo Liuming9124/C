@@ -1,5 +1,5 @@
-#ifndef JADE_H
-#define JADE_H
+#ifndef IJADE_H
+#define IJADE_H
 
 #include <queue>
 #include <vector>
@@ -8,10 +8,10 @@
 #include <cfloat>
 #include "Tool.h"
 #include "test_function.h"
-#include "AlgPrint.h"
+// #include "AlgPrint.h"
 using namespace std;
 
-class Jade
+class iJade
 {
 public:
     void RunALG(int, int, int, int, int, int, double, double);
@@ -23,6 +23,17 @@ public:
         double _fitness;
         int _index;
     } _Particle;
+    // new
+    void InitSwarm(int, int, int, int, int, int, double, double);
+    void Step(); // 跑一代（從原 Evaluation 拆出來）
+    double GetBestFitness() const { return _Best; }
+    Particle GetBestParticle();
+    void Inject(const Particle& p);
+    int GetFEs() const { return _nFess; }
+    bool IsFinished() const {
+        return _nFess >= _mFess;
+    }
+
 
 private:
     int _Run;
@@ -50,11 +61,11 @@ private:
     void CheckBorder(_Particle &, _Particle &);
     static bool compareFitness(const _Particle &, const _Particle &);
 
-    AlgPrint show;
+    // AlgPrint show;
     Tool tool;
 };
 
-void Jade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, double P, double C)
+void iJade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, double P, double C)
 {
     _Run = Run;
     _NP = NP;
@@ -67,8 +78,8 @@ void Jade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, double
     if (Arch!=0)
         _Arch = _NP;
 
-    show = AlgPrint(_Run, "./result", "jade");
-    show.NewShowDataDouble(1);
+    // show = AlgPrint(_Run, "./result", "jade");
+    // show.NewShowDataDouble(1);
 
     set_search_bound(&_upperBound, &_lowerBound, _Func);
     string FileName;
@@ -117,13 +128,13 @@ void Jade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, double
         Evaluation();
         Reset();
     }
-    show.PrintToFileDouble("./result/" + FileName + to_string(_Dim) + "D.txt", Run);
+    // show.PrintToFileDouble("./result/" + FileName + to_string(_Dim) + "D.txt", Run);
     cout << "end" << endl;
 }
 
-void Jade::Init()
+void iJade::Init()
 {
-    show.init();
+    // show.init();
     _nFess = 0;
     _mCR = 0.5;
     _mF = 0.5;
@@ -155,7 +166,7 @@ void Jade::Init()
     _U._fitness = _V._fitness = DBL_MAX;
 }
 
-void Jade::Evaluation()
+void iJade::Evaluation()
 {
     while(_nFess < _mFess)
     {
@@ -299,12 +310,12 @@ void Jade::Evaluation()
             if (_Best > _X[p]._fitness)
                 _Best = _X[p]._fitness;
         }
-        show.SetDataDouble(_Run, _Best, 0);
+        // show.SetDataDouble(_Run, _Best, 0);
     }
     cout << "Best: " << _Best << endl;
 }
 
-void Jade::Reset()
+void iJade::Reset()
 {
     _X.assign(_NP, _Particle());
     _A.assign(0, _Particle());
@@ -312,7 +323,7 @@ void Jade::Reset()
     _V._position.assign(_Dim, 0);
 }
 
-void Jade::CheckBorder(_Particle &check, _Particle &old)
+void iJade::CheckBorder(_Particle &check, _Particle &old)
 {
     for (int i = 0; i < _Dim; i++)
     {
@@ -327,12 +338,12 @@ void Jade::CheckBorder(_Particle &check, _Particle &old)
     }
 }
 
-bool Jade::compareFitness(const _Particle &a, const _Particle &b)
+bool iJade::compareFitness(const _Particle &a, const _Particle &b)
 {
     return a._fitness < b._fitness;
 }
 
-int Jade::selectTopPBest(vector<_Particle> X, double p)
+int iJade::selectTopPBest(vector<_Particle> X, double p)
 {
     vector<_Particle> tmp = X;
     sort(tmp.begin(), tmp.end(), compareFitness);
@@ -341,5 +352,160 @@ int Jade::selectTopPBest(vector<_Particle> X, double p)
     place = tool.rand_int(0, place);
     return tmp[place]._index;
 }
+
+void iJade::InitSwarm(int Run, int Func, int NP, int Fess, int Dim, int Arch, double P, double C) {
+    _Run = Run;
+    _NP = NP;
+    _Func = Func;
+    _mFess = Fess;
+    _Dim = Dim;
+    _P = P;
+    _C = C;
+    _Arch = Arch != 0 ? Arch : NP;
+    _Best = DBL_MAX;
+    _nFess = 0;
+    _mCR = _mF = 0.5;
+    _A.clear();
+    _X.resize(_NP, _Particle());
+
+    _U._position.assign(_Dim, 0.0);
+    _V._position.assign(_Dim, 0.0);
+    _U._fitness = _V._fitness = DBL_MAX;
+
+
+    set_search_bound(&_upperBound, &_lowerBound, _Func);
+
+    for (int i = 0; i < _NP; i++) {
+        _X[i]._position.resize(_Dim);
+        for (int j = 0; j < _Dim; j++)
+            _X[i]._position[j] = tool.rand_double(_lowerBound, _upperBound);
+
+        _X[i]._fitness = calculate_test_function(&_X[i]._position[0], _Dim, _Func);
+        _nFess++;
+        _X[i]._index = i;
+        _Best = min(_Best, _X[i]._fitness);
+    }
+}
+
+void iJade::Inject(const Particle& p) {
+    // 隨機替換一個最差的
+    auto worstIt = max_element(_X.begin(), _X.end(), compareFitness);
+    *worstIt = p;
+}
+
+iJade::Particle iJade::GetBestParticle() {
+    auto bestIt = min_element(_X.begin(), _X.end(), compareFitness);
+    return *bestIt;
+}
+
+void iJade::Step() {
+    if (_nFess % 1000 == 0) {
+        cout << "[Swarm] FEs: " << _nFess << ", Best: " << _Best << endl;
+    }
+
+    if (_nFess >= _mFess) return;
+
+    _SCR.clear();
+    _SF.clear();
+
+    for (int i = 0; i < _NP && _nFess < _mFess; i++) {
+        // 產生 CR, F
+        _X[i]._inCR = tool.rand_normal(_mCR, 0.1);
+        _X[i]._inCR = min(max(_X[i]._inCR, 0.0), 1.0);
+
+        do {
+            _X[i]._inF = tool.rand_cauchy(_mF, 0.1);
+        } while (_X[i]._inF <= 0.0);
+        if (_X[i]._inF > 1.0) _X[i]._inF = 1.0;
+
+        // mutation parents
+        int best = selectTopPBest(_X, _P);
+        int r1, r2, flag;
+
+        do { r1 = tool.rand_int(0, _NP - 1); } while (r1 == i);
+
+        while (true) {
+            int randIndex = tool.rand_int(0, _NP + _A.size() - 1);
+            if (randIndex < _NP) {
+                if (randIndex == i || randIndex == r1) continue;
+                r2 = randIndex;
+                flag = 0;
+                break;
+            } else {
+                int archiveIndex = randIndex - _NP;
+                bool similar = true;
+                for (int j = 0; j < _Dim; j++) {
+                    if (_A[archiveIndex]._position[j] != _X[i]._position[j] &&
+                        _A[archiveIndex]._position[j] != _X[r1]._position[j]) {
+                        similar = false;
+                        break;
+                    }
+                }
+                if (!similar) {
+                    r2 = archiveIndex;
+                    flag = 1;
+                    break;
+                }
+            }
+        }
+
+        // mutation
+        for (int j = 0; j < _Dim; j++) {
+            double F = _X[i]._inF;
+            if (flag == 0) {
+                _V._position[j] = _X[i]._position[j]
+                    + F * (_X[best]._position[j] - _X[i]._position[j])
+                    + F * (_X[r1]._position[j] - _X[r2]._position[j]);
+            } else {
+                _V._position[j] = _X[i]._position[j]
+                    + F * (_X[best]._position[j] - _X[i]._position[j])
+                    + F * (_X[r1]._position[j] - _A[r2]._position[j]);
+            }
+        }
+        CheckBorder(_V, _X[i]);
+
+        // crossover
+        int jrand = tool.rand_int(0, _Dim - 1);
+        for (int j = 0; j < _Dim; j++) {
+            if (j == jrand || tool.rand_double(0, 1) < _X[i]._inCR) {
+                _U._position[j] = _V._position[j];
+            } else {
+                _U._position[j] = _X[i]._position[j];
+            }
+        }
+
+        // selection
+        _U._fitness = calculate_test_function(&_U._position[0], _Dim, _Func);
+        _nFess++;
+
+        if (_X[i]._fitness > _U._fitness) {
+            _A.push_back(_X[i]);
+            _X[i]._position = _U._position;
+            _X[i]._fitness = _U._fitness;
+            _SCR.push_back(_X[i]._inCR);
+            _SF.push_back(_X[i]._inF);
+            if (_X[i]._fitness < _Best) _Best = _X[i]._fitness;
+        }
+    }
+
+    while (_A.size() > _Arch) {
+        int remove = tool.rand_int(0, _A.size() - 1);
+        _A.erase(_A.begin() + remove);
+    }
+
+    if (!_SCR.empty() && !_SF.empty()) {
+        double meanScr = accumulate(_SCR.begin(), _SCR.end(), 0.0) / _SCR.size();
+        double numerator = 0, denominator = 0;
+        for (double f : _SF) {
+            numerator += f * f;
+            denominator += f;
+        }
+        double meanF = numerator / denominator;
+        _mCR = (1 - _C) * _mCR + _C * meanScr;
+        _mF = (1 - _C) * _mF + _C * meanF;
+    }
+}
+
+
 
 #endif
