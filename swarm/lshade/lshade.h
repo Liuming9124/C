@@ -85,21 +85,29 @@ void Lshade::RunALG(int Run, int Func, int NP, int Fess, int Dim, int Arch, int 
         case 2:
             FileName = "Rastrigin";
             break;
-
         case 3:
             FileName = "HappyCat";
             break;
-
         case 4:
             FileName = "Rosenbrock";
             break;
-
         case 5:
             FileName = "Zakharov";
             break;
-
         case 6:
             FileName = "Michalewicz";
+            break;
+        case 7:
+            FileName = "Schwefel";
+            break;
+        case 8:
+            FileName = "BentCigar";
+            break;
+        case 9:
+            FileName = "DropWave";
+            break;
+        case 10:
+            FileName = "Step";
             break;
         default:
             printf("Invalid function number");
