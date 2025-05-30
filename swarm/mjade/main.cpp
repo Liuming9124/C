@@ -1,4 +1,4 @@
-#include "multi_ijade.h"
+#include "multi_jade.h"
 #include <sstream>
 
 AlgPrint SwarmManager::show;
@@ -8,9 +8,9 @@ int main(int argc, char *argv[]) {
     int totalRun = 30;
     int func = 1;
     int dim = 30;
-    int np = 50;
+    int np = 100;
     int arch = 1;
-    double p = 0.1;
+    double p = 0.05;
     double c = 0.1;
     int fess;
 

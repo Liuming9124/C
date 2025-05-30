@@ -1,17 +1,19 @@
-#ifndef MULTI_IJADE_H
-#define MULTI_IJADE_H
+#ifndef MULTI_JADE_H
+#define MULTI_JADE_H
 
-#include "ijade.h"
+#include "mjade.h"
 #include <vector>
 #include <iostream>
 #include <limits>
 #include "AlgPrint.h"
+#include "Tool.h"
 
 using namespace std;
 
 class SwarmManager {
 public:
     static AlgPrint show;
+    Tool tool;
 
 
     SwarmManager(int numSwarms, int run, int func, int np, int fess, int dim, int arch, double p, double c, int totalRun)
@@ -22,7 +24,7 @@ public:
             show.NewShowDataDouble(1);
         }
 
-        swarms.assign(numSwarms, iJade());
+        swarms.assign(numSwarms, mJade());
         for (int i = 0; i < numSwarms; i++) {
             swarms[i].InitSwarm(run, _Func, np, fess / numSwarms, dim, arch, p, c);
         }
@@ -102,14 +104,63 @@ private:
     int _numSwarms;
     int _Run, _Func, _NP, _Fess, _Dim, _Arch, _TotalRun;
     double _P, _C;
-    vector<iJade> swarms;
+    vector<mJade> swarms;
 
     void Migrate() {
-        // Best-to-Worst migration
+        // // Best-to-Worst migration
+        // for (int i = 0; i < _numSwarms; ++i) {
+        //     int next = (i + 1) % _numSwarms;
+        //     mJade::Particle best = swarms[i].GetBestParticle();
+        //     swarms[next].Inject(best);
+        // }
+
+
+        // // Best-to-Neighbor with perturbation
+        // for (int i = 0; i < _numSwarms; ++i) {
+        //     int next = (i + 1) % _numSwarms;
+        //     mJade::Particle best = swarms[i].GetBestParticle();
+
+        //     // 產生微擾
+        //     for (int d = 0; d < best._position.size(); ++d) {
+        //         double perturb = 0.01 * (tool.rand_double(-5, 5));  // ±1% 隨機微擾
+        //         best._position[d] += perturb;
+        //     }
+
+        //     // 評估新個體
+        //     best._fitness = calculate_test_function(&best._position[0], best._position.size(), _Func);
+
+        //     swarms[next].Inject(best);
+        // }
+
+
+        
+        const int k = 3;  // Top-k
+        vector<vector<mJade::Particle>> topKParticles(_numSwarms);
+
+        // 收集每個 swarm 的前 k 名
         for (int i = 0; i < _numSwarms; ++i) {
-            int next = (i + 1) % _numSwarms;
-            iJade::Particle best = swarms[i].GetBestParticle();
-            swarms[next].Inject(best);
+            topKParticles[i] = swarms[i].GetTopKParticles(k);
+        }
+
+        // 廣播給其他 swarm，並 inject 多樣性最大的那個
+        for (int i = 0; i < _numSwarms; ++i) {
+            int receiver = (i + 1) % _numSwarms;
+            mJade::Particle mostDiverse;
+            double maxDistance = -1;
+
+            for (const auto& p : topKParticles[i]) {
+                double dist = swarms[receiver].DistanceToSwarm(p);
+                if (dist > maxDistance) {
+                    maxDistance = dist;
+                    mostDiverse = p;
+                }
+            }
+
+            // 隨機小擾動再 inject
+            for (double& val : mostDiverse._position)
+                val += 0.01 * tool.rand_double(-3, 3);
+            mostDiverse._fitness = calculate_test_function(&mostDiverse._position[0], _Dim, _Func);
+            swarms[receiver].Inject(mostDiverse);
         }
     }
 };
