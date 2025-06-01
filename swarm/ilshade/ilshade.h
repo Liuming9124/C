@@ -285,6 +285,11 @@ void iLshade::Evaluation()
                 }
             } while (r2 == i || r2 == r1);
 
+            if (r2 >= _NPnow && flag == 0) {
+                r2 -= _NPnow;
+                flag = 1;
+            }
+
             // mutation & check boundary
             for (int j = 0; j < _Dim; j++)
             {
@@ -344,10 +349,17 @@ void iLshade::Evaluation()
             }
 
             // Update MCR
-            double maxSCR = *max_element(_SCR.begin(), _SCR.end());
-            if (_HS[_k].EndFlag || maxSCR == 0)
+            bool allZeroCR = true;
+            for (double cr : _SCR)
             {
-                _HS[_k].EndFlag = 1;
+                if (cr > 1e-8) {
+                    allZeroCR = false;
+                    break;
+                }
+            }
+            if (_HS[_k].EndFlag || allZeroCR)
+            {
+                _HS[_k].EndFlag = true;
             }
             else
             {
@@ -377,7 +389,6 @@ void iLshade::Evaluation()
         }
 
         // new: Population Reduction, Update NPnow
-        _FessNow += _NPnow;
         int _NPnext = (int) round((((_NPmin - _NP) / (double)_Fess) *  (double)_FessNow) + _NP );
 
         if (_NPnext != _NPnow){
