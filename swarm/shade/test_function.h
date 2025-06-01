@@ -1,6 +1,3 @@
-/* --- Test function for 113 midterm report of NSYSU swarm intelligence --- */
-// Editor: Cheng-Chun Chen
-
 #include <math.h>
 #include <float.h>
 #include <stdio.h>
@@ -14,6 +11,10 @@ double HappyCat(const double *x, const int d);
 double Rosenbrock(const double *x, const int d);
 double Zakharov(const double *x, const int d);
 double Michalewicz(const double *x, const int d);
+double Schwefel(const double *x, const int d);
+double BentCigar(const double *x, const int d);
+double DropWave(const double *x, const int d);
+double Step(const double *x, const int d);
 
 void set_search_bound(double *upper_bound, double *lower_bound, const int func_num)
 {
@@ -47,7 +48,22 @@ void set_search_bound(double *upper_bound, double *lower_bound, const int func_n
         *upper_bound = M_PI;
         *lower_bound = 0.0;
         break;
-
+    case 7:
+        *upper_bound = 500.0;
+        *lower_bound = -500.0;
+        break;
+    case 8:
+        *upper_bound = 100;
+        *lower_bound = -100;
+        break;
+    case 9:
+        *upper_bound = 5.12;
+        *lower_bound = -5.12;
+        break;
+    case 10:
+        *upper_bound = 100;
+        *lower_bound = -100;
+        break;
     default:
         printf("Invalid function number");
         break;
@@ -62,6 +78,7 @@ double calculate_test_function(const double *x, const int d, const int func_num)
     case 1:
         f = Ackley(x, d);
         break;
+
     case 2:
         f = Rastrigin(x, d);
         break;
@@ -81,6 +98,23 @@ double calculate_test_function(const double *x, const int d, const int func_num)
     case 6:
         f = Michalewicz(x, d);
         break;
+
+    case 7:
+        f = Schwefel(x, d);
+        break;
+
+    case 8:
+        f = BentCigar(x, d);
+        break;
+
+    case 9:
+        f = DropWave(x, d);
+        break;
+
+    case 10:
+        f = Step(x, d);
+        break;
+
     default:
         printf("Invalid function number");
         break;
@@ -149,4 +183,44 @@ double Michalewicz(const double *x, const int d)
         sum1 += sin(x[i]) * pow(sin((double(i + 1) * x[i] * x[i]) / M_PI), 20.0);
     }
     return sum1 * (-1);
+}
+
+double Schwefel(const double *x, const int d)
+{
+    double sum1 = 0.0;
+    for (int i = 0; i < d; ++i)
+    {
+        sum1 += x[i] * sin(sqrt(fabs(x[i])));
+    }
+    return 418.9829 * double(d) - sum1;
+}
+
+double BentCigar(const double *x, const int d)
+{
+    double sum1 = 0.0;
+    for (int i = 1; i < d; ++i)
+    {
+        sum1 += x[i] * x[i];
+    }
+    return x[0] * x[0] + pow(10.0, 6) * sum1;
+}
+
+double DropWave(const double *x, const int d)
+{
+    double sum1 = 0.0;
+    for (int i = 0; i < d; ++i)
+    {
+        sum1 += x[i] * x[i];
+    }
+    return 1.0 - ((1.0 + cos(12.0 * sqrt(sum1))) / (0.5 * sum1 + 2.0));
+}
+
+double Step(const double *x, const int d)
+{
+    double sum1 = 0.0;
+    for (int i = 0; i < d; ++i)
+    {
+        sum1 += floor(x[i] + 0.5) * floor(x[i] + 0.5);
+    }
+    return sum1;
 }
