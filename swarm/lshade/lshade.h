@@ -13,6 +13,20 @@ class Lshade
 public:
     void RunALG(int, int, int, int, int, int, int, int);
 
+    typedef struct History
+    {
+        double _MCR, _MF;
+    } _History;
+    vector<_History> _HS;
+
+    typedef struct Particle
+    {
+        vector<double> _position;
+        double _inCR, _inF, _inP;
+        double _fitness;
+        int _index;
+    } _Particle;
+
 private:
     int _Run;
     int _NP;
@@ -29,21 +43,6 @@ private:
     double _upperBound, _lowerBound;
     double _Best;
 
-
-    typedef struct History
-    {
-        double _MCR, _MF;
-        bool EndFlag;
-    } _History;
-    vector<_History> _HS;
-
-    typedef struct Particle
-    {
-        vector<double> _position;
-        double _inCR, _inF, _inP;
-        double _fitness;
-        int _index;
-    } _Particle;
     _Particle _U, _V;
     vector<_Particle> _X, _A;
 
@@ -136,9 +135,8 @@ void Lshade::Init()
     _Best = DBL_MAX;
     for (int i = 0; i < _H; i++)
     {
-        _HS[i]._MCR = 0.1;
-        _HS[i]._MF = 0.1;
-        _HS[i].EndFlag = 0;
+        _HS[i]._MCR = 0.5;
+        _HS[i]._MF = 0.5;
     }
 
     int dim = _Dim;
@@ -182,7 +180,7 @@ void Lshade::Evaluation()
         {
             // init CR & F & P
             int index = tool.rand_int(0, _H - 1);
-            if (_HS[index].EndFlag) // new: EndFlag For CRi
+            if (_HS[index]._MCR < 0) // new: EndFlag For CRi
             {
                 _X[i]._inCR = 0;
             }
@@ -256,6 +254,14 @@ void Lshade::Evaluation()
                 }
             } while (r2 == i || r2 == r1);
 
+            if (r2 >= _NPnow) {
+                r2 -= _NPnow;
+                flag = 1;
+            } else {
+                flag = 0;
+            }
+
+
             // mutation & check boundary
             for (int j = 0; j < _Dim; j++)
             {
@@ -316,18 +322,20 @@ void Lshade::Evaluation()
 
             // Update MCR
             double maxSCR = *max_element(_SCR.begin(), _SCR.end());
-            if (_HS[_k].EndFlag || maxSCR == 0)
-            {
-                _HS[_k].EndFlag = 1;
-            }
-            else
-            {
-                for (int t = 0; t < _SCR.size(); t++)
+            if (_HS[_k]._MCR >= 0) {
+                if (maxSCR == 0)
                 {
-                    // mean weight Scr
-                    mCR += (deltaF[t] / WKdenominator) * _SCR[t];
+                    _HS[_k]._MCR = -1;
                 }
-                _HS[_k]._MCR = mCR;
+                else
+                {
+                    for (int t = 0; t < _SCR.size(); t++)
+                    {
+                        // mean weight Scr
+                        mCR += (deltaF[t] / WKdenominator) * _SCR[t];
+                    }
+                    _HS[_k]._MCR = mCR;
+                }
             }
 
             // Update MF
@@ -346,7 +354,6 @@ void Lshade::Evaluation()
         }
 
         // new: Population Reduction, Update NPnow
-        _FessNow += _NPnow;
         int _NPnext = (int) round((((_NPmin - _NP) / (double)_Fess) *  (double)_FessNow) + _NP );
 
         if (_NPnext != _NPnow){
@@ -389,7 +396,6 @@ void Lshade::Reset()
 
     _X.clear();
     _A.clear();
-    _HS.clear();
     _SF.clear();
     _SCR.clear();
     _U._position.clear();
@@ -420,9 +426,8 @@ int Lshade::selectTopPBest(vector<_Particle> X, double p)
 {
     vector<_Particle> tmp = X;
     sort(tmp.begin(), tmp.end(), compareFitness);
-    int place;
-    place = p * _NPnow;
-    place = tool.rand_int(0, place);
+    int num = max(1, int(p * _NPnow));
+    int place = tool.rand_int(0, num - 1);
 
     return tmp[place]._index;
 }
